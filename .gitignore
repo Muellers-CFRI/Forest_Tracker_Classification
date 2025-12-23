@@ -1,0 +1,28 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# --- PyCharm ---
+.idea/
+
+# --- ArcGIS / ESRI ---
+*.lock
+*.log
+gpmetadata/
+*.xml
+*.mxd.xml
+scratch.gdb/
+Default.gdb/
+
+# --- Data (DO NOT UPLOAD GDBs) ---
+*.gdb/
+*.sde/
+data/
+
+# --- Miscellaneous ---
+archive/
+.DS_Store
+Thumbs.db
