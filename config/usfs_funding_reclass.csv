@@ -1,0 +1,216 @@
+fund_code,fund_source,fund_type,FT
+|BIL,Bipartisan Infrastructure Law (BIL),Federal,
+|Management Regular (FMReg),Fuels Management Regular,Federal,
+<Null>,Unknown,Federal,
+ACAC,Acquisition of Land for National Forest Special Acts,Federal,
+BAR - BIL,Bipartisan Infrastructure Law (BIL),Federal,
+BAR - Disaster Relief,Burned Area Rehabilitation,Federal,
+BAR - Regular,Burned Area Rehabilitation,Federal,
+BDBD,Brush Disposal,Federal,BDBD
+BIL,Bipartisan Infrastructure Law (BIL),Federal,
+BIL|Contributed,Bipartisan Infrastructure Law (BIL),Federal,
+BIL|Other (See Notes),Bipartisan Infrastructure Law (BIL),Federal,
+CFIX,Bipartisan Infrastructure Law (BIL),Federal,
+CFLN,Collaborative Forest Landscape Restoration,Federal,CFLN
+CFLR,Collaborative Forest Landscape Restoration,Federal,
+CMC2,Capital Improvement and Maintenance,Federal,
+CMEX,Capital Improvement and Maintenance,Federal,
+CMFA,Capital Improvement and Maintenance,Federal,
+CMFC,Capital Improvement and Maintenance,Federal,
+CMFD,Capital Improvement and Maintenance,Federal,
+CMII,Capital Improvement and Maintenance,Federal,
+CMIX,Capital Improvement and Maintenance,Federal,
+CMLG,Capital Improvement and Maintenance,Federal,
+CMRD,Capital Improvement and Maintenance,Federal,CMRD
+CMRO,Capital Improvement and Maintenance,Federal,
+CMTL,Capital Improvement and Maintenance,Federal,CMTL
+CMTR,Capital Improvement and Maintenance,Federal,
+CMXF,Capital Improvement and Maintenance,Federal,
+CMXN,Capital Improvement and Maintenance,Federal,
+CONT,Other,Federal,CONT
+Contributed,Other,Federal,
+Contributed|Management Regular (FMReg),Fuels Management Regular,Federal,
+Contributed|Management Regular (FMReg)|Other (See Notes),Fuels Management Regular,Federal,
+CRRD,Other,Federal,
+CRWE,Watershed Restoration and Ecosystem Enhancement ,Federal,
+CWCD,Other,Federal,
+CWF2,Cooperative Work,Federal,CWF2
+CWFS,Cooperative Work,Federal,CWFS
+CWK2,Cooperative Work Knutson-Vandenberg,Federal,
+CWKV,Cooperative Work Knutson-Vandenberg,Federal,CWKV
+Disaster Relief (FMDisasterRelief),Disaster Relief,Federal,
+DS01,Bipartisan Infrastructure Law (BIL),Federal,DS01
+DS02,Bipartisan Infrastructure Law (BIL),Federal,
+DS03,Bipartisan Infrastructure Law (BIL),Federal,
+DS05,Bipartisan Infrastructure Law (BIL),Federal,
+DS06,Bipartisan Infrastructure Law (BIL),Federal,
+DSSE,Bipartisan Infrastructure Law (BIL),Federal,
+Emergency Stabilization,Other,Federal,
+ER21,Other,Federal,
+ETCC,Other,Federal,
+ETCR,Other,Federal,
+FDAS,Other,Federal,
+FDDS,Other,Federal,
+FREX,Other,Federal,
+FRF2,Other,Federal,
+FRIX,Other,Federal,
+FRRE,Other,Federal,
+FRXF,Other,Federal,
+FRXN,Other,Federal,
+GBGB,Other,Federal,
+GDGD,Other,Federal,
+GNPI,Good Neighbor Authority,Federal,GNPI
+GPIV,Other,Federal,
+GSRV,Other,Federal,
+HFDS,National Forest System,Federal,HFDS
+HTBW,Other,Federal,
+HTER,Other,Federal,
+HWEX,Other,Federal,
+HWIX,Other,Federal,
+HX01,Bipartisan Infrastructure Law (BIL),Federal,
+HX04,Bipartisan Infrastructure Law (BIL),Federal,
+HX05,Bipartisan Infrastructure Law (BIL),Federal,
+HX08,Bipartisan Infrastructure Law (BIL),Federal,
+HX10,Bipartisan Infrastructure Law (BIL),Federal,
+HX13,Bipartisan Infrastructure Law (BIL),Federal,
+HX25,Bipartisan Infrastructure Law (BIL),Federal,
+HX28,Bipartisan Infrastructure Law (BIL),Federal,
+HX29,Bipartisan Infrastructure Law (BIL),Federal,
+HX36,Bipartisan Infrastructure Law (BIL),Federal,HX36
+HX51,Bipartisan Infrastructure Law (BIL),Federal,HX51
+HX52,Bipartisan Infrastructure Law (BIL),Federal,
+HX59,Bipartisan Infrastructure Law (BIL),Federal,
+HX61,Bipartisan Infrastructure Law (BIL),Federal,
+HX63,Bipartisan Infrastructure Law (BIL),Federal,
+Interagency Support,Other,Federal,
+IRHF,Other,Federal,IRHF
+IRVM,Other,Federal,
+LALW,Land Acquisition,Federal,
+LBLB,Other,Federal,
+LBTV,Other,Federal,
+LEXC,Other,Federal,
+LPFL,Licensee Program Woodsy Owl,Federal,
+LPSB,Other,Federal,
+Management Regular (FMReg),FMReg,Federal,
+Management Regular (FMReg)|Other (See Notes),Multiple,Federal,
+NFCC,Other,Federal,
+NFDD,National Forest System,Federal,
+NFDH,National Forest System,Federal,
+NFEX,National Forest System,Federal,
+NFFP,Other,Federal,
+NFHF,Hazardous Fuels Reduction,Federal,NFHF
+NFHM,Other,Federal,
+NFIX,National Forest System,Federal,
+NFLE,Other,Federal,
+NFLM,National Forest Land Ownership Management,Federal,
+NFLO,Other,Federal,
+NFMG,Other,Federal,
+NFMP,Land Management Planning Assessment and Monitoring,Federal,NFMP
+NFN3,National Forest System,Federal,NFN3
+NFND,Other,Federal,NFND
+NFPN,Other,Federal,
+NFRG,Grazing Management,Federal,NFRG
+NFRH,Other,Federal,
+NFRR,Other,Federal,
+NFRW,"Recreation, Heritage and Wilderness",Federal,NFRW
+NFSE,National Forest System,Federal,NFSE
+NFSF,National Forest System,Federal,
+NFSH,National Forest System,Federal,
+NFSO,National Forest System,Federal,
+NFSW,National Forest System,Federal,
+NFTM,National Forest Timber Management,Federal,NFTM
+NFVW,Vegetation and Watershed Management,Federal,NFVW
+NFWF,National Fish and Wildlife Foundation,Federal,NFWF
+NFWM,Other,Federal,
+NFXF,National Forest System,Federal,NFXF
+NFXN,National Forest System,Federal,NFXN
+NIGX,Bipartisan Infrastructure Law (BIL),Federal,
+NISX,Bipartisan Infrastructure Law (BIL),Federal,
+NULL,Unknown,Federal,
+OFED,Other,Federal,OFED
+Other (See Notes),Other,Federal,
+PEP2,Other,Federal,
+PEPE,Other,Federal,
+PFBA,Bipartisan Infrastructure Law (BIL),Federal,
+PIPI,Midewin National Tallgrass Prairie Rental Fees,Federal,
+PPPP,Brush Disposal Purchaser Elect,Federal,PPPP
+PRPP,Other,Federal,
+PSCP,Other,Federal,
+PSRS,Other,Federal,
+QAQA,Quinault Special Management Area,Federal,
+QMQM,Operation and Maintenance of Forest Service Quarters,Federal,
+RBRB,Range Betterment Fund,Federal,
+RIRI,Other,Federal,
+RMET,Other,Federal,
+RMEX,Other,Federal,
+RMIX,Other,Federal,
+RTEX,Other,Federal,
+RTIX,Other,Federal,
+RTRT,Reforestation and Timber Stand Improvement,Federal,RTRT
+SIFI,Other,Federal,
+SMSM,Management of National Forest Lands for Subsistance Uses,Federal,
+SNPL,Other,Federal,
+SPCF,Other,Federal,
+SPCH,Forest Health Monitoring,Federal,
+SPEX,Other,Federal,
+SPFH,Forest Health Monitoring,Federal,SPFH
+SPIA,Other,Federal,
+SPID,Other,Federal,SPID
+SPIF,Other,Federal,
+SPIX,Other,Federal,
+SPLG,Other,Federal,
+SPOT,Other,Federal,SPOT
+SPS4,Other,Federal,SPS4
+SPS5,Other,Federal,
+SPS6,Other,Federal,
+SPSE,Other,Federal,
+SPST,Other,Federal,
+SPUF,Other,Federal,
+SPXF,Other,Federal,
+SPXN,Other,Federal,
+SRS2,Other,Federal,SRS2
+SRSA,Other,Federal,
+SSCC,Stewardship Contracting,Federal,SSCC
+SSSS,Salvage Sales,Federal,SSSS
+TPBP,Botanical Products,Federal,
+TPCD,Other,Federal,
+TPPS,Other,Federal,
+TTEX,Other,Federal,
+TTIX,Other,Federal,
+TX70,Bipartisan Infrastructure Law (BIL),Federal,
+TX71,Bipartisan Infrastructure Law (BIL),Federal,
+TX72,Bipartisan Infrastructure Law (BIL),Federal,
+TX73,Bipartisan Infrastructure Law (BIL),Federal,TX73
+URMJ,Cost Recovery Lands Major Proj,Federal,
+URMN,Other,Federal,
+VX70,Bipartisan Infrastructure Law (BIL),Federal,
+VX72,Bipartisan Infrastructure Law (BIL),Federal,VX72
+VX74,Bipartisan Infrastructure Law (BIL),Federal,
+VX75,Bipartisan Infrastructure Law (BIL),Federal,
+VX76,Bipartisan Infrastructure Law (BIL),Federal,
+WCAO,Other,Federal,
+WCAR,Other,Federal,
+WCBP,Other,Federal,
+WCCP,Other,Federal,
+WCFE,Other,Federal,
+WCLP,Other,Federal,
+WCNR,Other,Federal,
+WCSP,Other,Federal,
+WCWE,Other,Federal,
+WFCF,Other,Federal,
+WFEX,Other,Federal,
+WFHF,Hazardous Fuels Reduction,Federal,WFHF
+WFIX,Other,Federal,
+WFPR,Preparedness,Federal,WFPR
+WFSE,Salaries and Expenses,Federal,WFSE
+WFSU,Wildland Fire Suppression,Federal,WFSU
+WFVF,Other,Federal,
+WFW3,Other,Federal,
+WFXF,Other,Federal,
+WFXN,External Reimbursement,Federal,WFXN
+WISX,Bipartisan Infrastructure Law (BIL),Federal,WISX
+WRFH,Forest Health Protection of Federal Lands,Federal,
+WRHR,Other,Federal,WRHR
+WRWB,Other,Federal,
+XXXX,Harvest Activity,Federal,XXXX
+No Funding Code,Unknown,Federal,

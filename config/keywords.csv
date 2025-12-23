@@ -1,0 +1,32 @@
+﻿regex,activity,notes
+\bhand(?:\s*|-)?(?:thin(?:ning)?|cut(?:ting)?)\b,Manual,i.e. 'hand thin' or 'handthinning' or 'hand cut'
+manual,Manual,
+(?:^|[\s_])pile\s*(?:rx|burn(?:ing)?)\b,Pile Burn,"i.e. 'pile burn', 'pile rx' or 'pile burning', but NOT 'pile fuels'"
+\bpil(?:e|es|ed|ing)\b,Pile Fuels,
+thin(?:ning)? (?:without|with no) remov\w*,Mechanical,special case: thinning without removal
+\bthin(?:ning)?\b,Mechanical,i.e. 'thin' or 'thinning'
+feller buncher,Mechanical,
+mechanical,Mechanical,
+remov\w*,Removal,generic removal (will not override the special-case above because rules are checked in order)
+salvage,Removal,
+\b(?:broadcast\s*(?:burn|rx)|prescribed(?:\s*(?:fire|burn|rx))?|control\s*burn|rx\s*(?:burn|fire))\b,Broadcast Burn,"covers 'broadcast burn', 'broadcast rx', 'prescribed fire', 'control burn', etc."
+masticat(?:e|ion),Mastication,
+hydro\w*,Mastication,
+fecon|bull hog,Mastication,
+rollerchop\w*,Mastication,
+mow(?:ing)?,Mastication,mow or mowing
+\bmx\b,Mastication,mx
+\bslash(?:ing)?\b,Mastication,slash or slashing
+biomass removal,Removal,
+\bchip\w*\b,Mulching,
+crushing,Mulching,
+\blop\b(?:\s+\w+)*\s+scatter\b,Lop and Scatter,
+wildfire|fire use|resource benefit,DELETE,
+\bcheat\s*grass\b,DELETE,
+invasives,DELETE,
+(?:^|[\s_])weeds?\b,DELETE,
+(?:^|[\s_])seeding?\b,DELETE,
+herb,DELETE,
+biological,DELETE,
+\b(?:oak|russian olive|tamarisk|salt cedar|cottonwood)\b,TREE CHECK,intended to catch tree/woody species that may have been chemically treated or planted - requires manual check or second pass
+planting,PLANT CHECK,

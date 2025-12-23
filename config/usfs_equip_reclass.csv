@@ -1,0 +1,65 @@
+﻿equipment,equip_reclass
+Aerial Ignition Device,SKIP
+Animal  logging                                                          ,Manual
+Auger,Manual
+Axe,Manual
+Brush cutter,Manual
+Chain Saw,Manual
+Chipper,Mastication
+Cut to length                                           ,Mechanical
+Dibble,Manual
+Disc,Mastication
+Dozer,Mastication
+Drip torch,SKIP
+Drum Shredder,Mastication
+Feller Buncher,Mechanical
+Fencing,SKIP
+Forwarder,Mechanical
+Grapple Piler,Mechanical
+Ground Base Skidder *,Mechanical
+Hand saw,Manual
+Hand Tool,Manual
+Hand Work,Manual
+Hazel hoe,Manual
+Helicopter (non-harvest),Mechanical
+Helicopter logging                                                     ,Mechanical
+Helicopter logging -large                                    ,Mechanical
+Helicopter logging -medium                                     ,Mechanical
+Helicopter logging -small                              ,Mechanical
+Helitorch,Mechanical
+Highlead                                                         ,Mechanical
+Hoedad,Manual
+Ladders,SKIP
+Loader logging                                          ,Mechanical
+Low ground pressure machinery (non-harvest),Mechanical
+Lumagel,SKIP
+Machette,Manual
+Manual logging                              ,Manual
+Masticator,Mastication
+Mechanized systems (felling/bucking/delimbing),Mechanical
+Mower,Mastication
+Mulcher,Mastication
+NA,SKIP
+Other logging                                                   ,Mechanical
+Ping Pong Balls,SKIP
+Planting bar,Manual
+Power hand,Manual
+Propane torch,SKIP
+Pruning saw,Manual
+Pulaski,Manual
+Ripper,Mechanical
+Roller Chopper,Mastication
+Rubber tired skidder logging                                    ,Mechanical
+Scarification rake,Manual
+Shovel,Manual
+Shredder,Mastication
+Single span skyline                                    ,Mechanical
+Skid-Steer-Type Vehicle,Mechanical
+Small Yarder,Mechanical
+Terra torch,SKIP
+Track loader/jammer                               ,Mechanical
+Tractor  logging                                                          ,Mechanical
+Tractor (non-harvest),Mechanical
+Tree Shear,Mechanical
+Utility Vehicle,Mechanical
+Utilizer-chip                                              ,Mastication
