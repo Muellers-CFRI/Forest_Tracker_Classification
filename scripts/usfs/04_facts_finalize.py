@@ -1,7 +1,13 @@
+
 '''Series of update cursors to finalize FACTS'''
 
+# Import packages
 import arcpy
 import datetime
+
+# Import utilities
+from scripts.utils.date_tools import get_comp_year
+from scripts.utils.gis_tools import add_tracker_fields, delete_unnecessary_fields
 
 arcpy.env.overwriteOutput = True
 dt = datetime.datetime.now()
@@ -27,25 +33,12 @@ def remove_duplicate_list(value):
     return ', '.join(deduped) if deduped else None
 
 
-tracker_fields = {
-    "PRJ_NAME": "TEXT", "AGENCY": "TEXT", "AGENCY_C": "TEXT",
-    "FUND_SOURCE": "TEXT", "FUND_TYPE": "TEXT", "LANDOWNER": "TEXT",
-    "MGT_TYPE": "TEXT", "RXFIRE_MGT": "TEXT", "CANOPY_MGT": "TEXT", "SURF_MGT": "TEXT",
-    "REFOREST": "TEXT", "TREE_COUNT": "LONG", "SPECIES": "TEXT",
-    "PRJ_OBJECT": "TEXT", "YEAR_COMP": "LONG", "ACRES_GIS":"DOUBLE",
-    "ACRES_MGT": "DOUBLE", "NOTES": "TEXT", "ORGFILE": "TEXT",
-    "UPDATED": "DATE", "MODIFY_BY": "TEXT", "SourceOID": "LONG"
-}
-
 # Create copy to final
 arcpy.CopyFeatures_management(input_fc, output_fc)
 
 # Add all forest tracker final fields
 print("Adding Forest Tracker Fields...")
-existing_fields = [f.name for f in arcpy.ListFields(output_fc)]
-for field_name, field_type in tracker_fields.items():
-    if field_name not in existing_fields:
-        arcpy.AddField_management(output_fc, field_name, field_type)
+add_tracker_fields(output_fc)
 
 # Add source OID to link input and output feature class
 with arcpy.da.UpdateCursor(output_fc, ["SourceOID", "OBJECTID"]) as cursor:
@@ -146,20 +139,11 @@ with arcpy.da.UpdateCursor(output_fc, ["activity_reclass", "FIRE_MGT", "CANOPY_M
 print("Updating completion year...")
 with arcpy.da.UpdateCursor(output_fc, ["DATE_COMPLETED", "YEAR_COMP"]) as cursor:
     for row in cursor:
-        dt = row[0]
-        if hasattr(dt, "year") and dt.year >= 2000:
-            row[1] = dt.year
-            cursor.updateRow(row)
+        row[1] = get_comp_year(row[0])
+        cursor.updateRow(row)
 
 # Clean up
 print("Deleting unnecessary fields...")
-keep_fields = list(tracker_fields.keys())
-db_fields = {"OBJECTID", "Shape", "Shape_Length", "Shape_Area"}
-for fld in arcpy.ListFields(output_fc):
-    if fld.name not in keep_fields and fld.name not in db_fields:
-        try:
-            arcpy.DeleteField_management(output_fc, fld.name)
-        except Exception as e:
-            print(f"{fld.name} not deleted.")
+delete_unnecessary_fields(output_fc)
 
 print(f"✅ USFS FACTS data compiled into Forest Tracker format! Runtime: {datetime.datetime.now() - dt}")

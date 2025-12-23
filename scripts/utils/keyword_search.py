@@ -17,16 +17,6 @@ activity_fields = {
     "Keyword": "TEXT"
 }
 
-tracker_fields = {
-    "PRJ_NAME": "TEXT", "AGENCY": "TEXT", "AGENCY_C": "TEXT",
-    "FUNDING": "TEXT", "LANDOWNER": "TEXT", "MGT_TYPE": "TEXT",
-    "FIRE_MGT": "TEXT", "CANOPY_MGT": "TEXT", "SURF_MGT": "TEXT",
-    "REFOREST": "TEXT", "TREE_COUNT": "LONG", "SPECIES": "TEXT",
-    "PRJ_OBJECT": "TEXT", "YEAR_COMP": "LONG", "ACRES_GIS":"DOUBLE",
-    "ACRES_MGT": "DOUBLE", "NOTES": "TEXT", "ORGFILE": "TEXT",
-    "UPDATED": "DATE", "MODIFY_BY": "TEXT"
-}
-
 
 def add_new_fields(fc, final_field_list):
     """ Add final gdb fields to perimeter feature classes """
