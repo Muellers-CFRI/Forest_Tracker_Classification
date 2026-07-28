@@ -47,10 +47,10 @@ The pipeline executes in four distinct, defensive stages to protect data integri
 
 ```
 
-1. **01_facts_download_QAQC.py (Ingestion):** Automatically harvests multiple compressed `.gdb.zip` endpoints directly from the USFS Enterprise Data Warehouse, clips them to the regional boundary (Colorado) to cut processing overhead by 90%, and explodes complex multipart features into distinct single-part geometries.
+1. **01_facts_download_QAQC.py (Ingestion):** Automatically harvests multiple compressed `.gdb.zip` endpoints directly from the USFS Enterprise Data Warehouse, clips them to the Colorado state boundary, and explodes complex multipart features into distinct single-part geometries.
 2. **02_facts_reclass.py (Normalization):** Runs a multi-tiered hierarchical lookup to resolve messy raw agency codes, methods, and compound funding strings. Any remaining unmapped categories are automatically assigned via an in-memory Pandas statistical majority-vote loop.
-3. **03_facts_flatten.py (Spatial Consolidation):** Resolves spatial overlap inflation by executing a specialized `arcpy.management.Dissolve` utilizing an aggressive 100-meter clustering tolerance to compress field-GPS drift.
-4. **04_facts_finalize.py (Enforcement):** Applies a rigorous mathematical reality check. It reads raw polygon geometry arrays (`SHAPE@AREA`) and clamps the final management acreage (`ACRES_MGT`) to the smaller of either the reported or physical values, wipes away intermediate scaffolding columns, and applies the production `TRACKER_FIELDS` schema.
+3. **03_facts_flatten.py (Spatial Consolidation):** Resolves spatial overlap inflation by executing a specialized `arcpy.management.Dissolve` utilizing an aggressive 100-meter clustering tolerance to compress point drift.
+4. **04_facts_finalize.py (Enforcement):** Reads raw polygon geometry arrays (`SHAPE@AREA`) and clamps the final management acreage (`ACRES_MGT`) to the smaller of either the reported or physical values, wipes away intermediate scaffolding columns, and applies the production `TRACKER_FIELDS` schema.
 
 ---
 
