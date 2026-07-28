@@ -35,7 +35,7 @@ facts_processing_fields = [
     "fileNmDate",
 ]
 
-classification_fields = {
+keyword_classification_fields = {
     "Original_ID": "LONG",
     "Class_Combine": "TEXT",
     "ActClass_1": "TEXT", "Keyword_1": "TEXT",
@@ -43,7 +43,7 @@ classification_fields = {
     "ActClass_3": "TEXT", "Keyword_3": "TEXT"
 }
 
-activity_fields = {
+keyword_activity_fields = {
     "activity_reclass": "TEXT",
     "Keyword": "TEXT"
 }

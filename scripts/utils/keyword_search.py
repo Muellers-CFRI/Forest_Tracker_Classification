@@ -3,7 +3,7 @@ import os
 import re
 import csv
 
-from config.config import classification_fields, activity_fields
+from config.config import keyword_classification_fields, keyword_activity_fields
 from scripts.utils.gis_tools import add_fields_from_schema
 
 
@@ -37,7 +37,7 @@ def classify_by_keyword(fc, activity_csv, class_field):
             except re.error as e:
                 print(f"Bad regex '{regex_str}' : {e}")
 
-    activity_fieldnames = [f for f in classification_fields.keys() if f != "Original_ID" and f != "Class_Combine"]
+    activity_fieldnames = [f for f in keyword_classification_fields.keys() if f != "Original_ID" and f != "Class_Combine"]
 
     print(f"FC: {fc}")
     print(f"Class Field: {class_field}")
@@ -86,8 +86,8 @@ def classify_treatments(input_fc, fields_to_classify, activity_csv, output_fc):
     # Copy input to preserve source
     temp_fc = arcpy.CopyFeatures_management(input_fc, arcpy.env.scratchGDB + "/fc")
 
-    add_fields_from_schema(temp_fc, classification_fields)
-    add_fields_from_schema(temp_fc, activity_fields)
+    add_fields_from_schema(temp_fc, keyword_classification_fields)
+    add_fields_from_schema(temp_fc, keyword_activity_fields)
 
     # Build cursor field list: input text fields + Class_Combine + date + YEAR_COMP
     cursor_fields = fields_to_classify + ["Class_Combine"]
@@ -222,7 +222,7 @@ def finalize_and_split(combined_fc, delete_out, unclass_out, class_out):
     """Wrapper to handle explode and split logic"""
     exploded_fc = combined_fc + "_vertical"
 
-    explode_activity(combined_fc, classification_fields, exploded_fc)
+    explode_activity(combined_fc, keyword_classification_fields, exploded_fc)
     split_outputs(exploded_fc, delete_out, unclass_out, class_out)
 
     if arcpy.Exists(exploded_fc):
