@@ -1,30 +1,30 @@
 """
 ---------------------------------------------------------------------------
-Title: FACTS Duplicate Shape Identification and Dissolve Script
+Title: USFS FACTS Spatial Flattening and Dissolve Pipeline
 
 Purpose:
-    This script identifies and resolves duplicate treatment
-    features within the U.S. Forest Service FACTS dataset prior to Forest Tracker
-    integration. It detects shape duplicates, groups them logically, dissolves
-    redundant geometries, and outputs a flattened, cleaned feature class.
+    Identifies and resolves overlapping or duplicate treatment features
+    within the USFS FACTS dataset to eliminate spatial "double counting"
+    before final data mapping.
 
 Major Steps:
-    1. Create a working copy of the FACTS reclassified perimeters.
-    2. Identify shape duplicates using a defined XY tolerance (e.g., 25 meters).
-    3. Assign a unique Duplicate Group ID (DuplID) to all identical shapes.
-    4. Create dissolve groups for duplicate features based on activity type and
-       completion date.
-    5. Dissolve grouped duplicates while preserving key attribute information
-       (e.g., NEPA_DOC_NAME, TREATMENT_NAME, NBR_UNITS_ACCOMPLISHED).
-    6. Rename fields to remove ArcGIS dissolve prefixes and restore clean names.
-    7. Merge dissolved and non-duplicate features into a single flattened layer.
+    1. Import data and generate stable tracking fields upstream.
+    2. Group adjacent or near-duplicate shapes using an aggressive XY
+       tolerance (100 meters) to account for field-GPS collection drift.
+    3. Use fast Pandas in-memory dictionaries to map and assign unique
+       dissolve group keys (`DISSOLVE_GRP`) based on activity type,
+       spatial cluster, and completion timeframe.
+    4. Execute an arcpy.management.Dissolve using customized aggregation rules
+       to flatten geometries.
+    5. Re-integrate unique (non-overlapping) features to output a complete,
+       compressed feature class.
 
 Inputs:
-    FACTS_reclass  – Perimeter feature class with reclassified FACTS treatments.
+    usfs_reclass – Feature class with reclassified FACTS treatments.
 
 Outputs:
-    perim_flatten  – Flattened feature class containing both dissolved duplicates
-                     and unique features, ready for attribute standardization.
+    usfs_flatten – Spatial footprint-flattened feature class ready for
+                   temporal filtering and schema mapping in the final script.
 ---------------------------------------------------------------------------
 """
 
@@ -35,12 +35,11 @@ import pandas as pd
 from datetime import datetime
 from scripts.utils.paths import get_gdb_path, SCRATCH_GDB
 
-# --- CONFIG ---
 arcpy.env.overwriteOutput = True
 dt = datetime.now()
 datetime_str = dt.strftime("%Y-%m-%d")
 
-# Directories and files
+# PATHS
 staged_gdb = get_gdb_path("usfs", stage="staged", gdb_name="usfs")
 FACTS_reclass = os.path.join(staged_gdb, "usfs_reclass")
 perim_flatten_output  = os.path.join(staged_gdb, "usfs_flatten")
@@ -154,7 +153,7 @@ arcpy.management.Delete("find_identical_lyr")
 print("Dissolve identical features")
 dissolve_fields = group_fields + ["DISSOLVE_GRP"]
 agg_fields = [
-    ["NBR_UNITS_ACCOMPLISHED", "SUM"],
+    ["NBR_UNITS_ACCOMPLISHED", "MAX"],
     ["NEPA_DOC_NAME", "CONCATENATE"],
     ["TREATMENT_NAME", "CONCATENATE"],
     ["fileNmDate", "FIRST"],

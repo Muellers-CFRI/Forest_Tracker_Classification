@@ -1,3 +1,40 @@
+"""
+---------------------------------------------------------------------------
+Title: USFS FACTS Data Automated Ingestion and Multi-Source Downloader
+
+Purpose:
+    Automates the sequential fetching, extraction, and standardization of
+    multiple public USFS FACTS file geodatabase endpoints. Standardizes core
+    spatial fields, clips to regional boundaries, dynamically cleans
+    unreliable temporal values, and aggregates layers into a unified footprint.
+
+Major Steps:
+    1. Iterate through public zip-compressed agency download URLs in sequence.
+    2. Extract zipped file geodatabases to disk, isolate the target feature classes,
+       and stage records in the fast `memory\\` workspace.
+    3. Filter out records outside the Colorado boundary (`STATE_ABBR = 'CO'`)
+       early to shrink subsequent geographic processing volume by over 90%.
+    4. Harmonize native agency attribute naming anomalies across distinct datasets
+       into standard processing fields (`facts_processing_fields`).
+    5. Compile isolated layers into a single merged dataset and enforce temporal
+       boundary constraints (`START_YEAR` to `END_YEAR`).
+    6. Ensure date consistency by programmatically populating empty execution
+       dates (`DATE_COMPLETED`) with valid planning dates (`DATE_AWARDED`).
+    7. Standardize spatial projections to EPSG:26913 (NAD83 UTM Zone 13N).
+    8. Sanitize text fields containing invalid default values (e.g., placeholder
+       NEPA labels), drop extraneous attribute metadata columns, and explode
+       complex multi-part geometry combinations into distinct single-part records.
+
+Inputs:
+    FACTS_URLS              – Configuration dictionary holding specific remote zip endpoints.
+    facts_processing_fields – Central metadata schema used to preserve core tracking variables.
+
+Outputs:
+    usfs_perimeter_dwnld    – Multi-source aggregated and geographically standardized feature
+                              class saved to the intermediate staging database.
+---------------------------------------------------------------------------
+"""
+
 # Import libraries
 import os
 import arcpy
@@ -5,47 +42,15 @@ import urllib.request
 from datetime import datetime
 from zipfile import ZipFile
 from scripts.utils.paths import get_gdb_path, RAW_GDB, SCRATCH_DIR
-from config.config import START_YEAR, END_YEAR
+from config.config import START_YEAR, END_YEAR, FACTS_URLS, facts_processing_fields
 
-# ----- CONFIG -----
 arcpy.env.overwriteOutput = True
-
-# PC Directory
-staged_gdb = get_gdb_path("usfs", stage="staged", gdb_name="usfs")
-final_fc = os.path.join(staged_gdb, "usfs_perimeter_dwnld")
-
-# date filtering
 dt = datetime.now()
 datetime_str = dt.strftime("%Y-%m-%d")
 
-# FACTS source URLs
-URLS = {
-    "CommonAttributes": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/S_USA.Actv_CommonAttribute_PL.gdb.zip",
-    "HazFuelTrt": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_HazFuelTrt_PL.gdb.zip",
-    "SilvReforestation": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_SilvReforest.gdb.zip",
-    "BrushDisposal": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_BrushDisposal.gdb.zip",
-    "CFLRP": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_CFLRP_PL.gdb.zip",
-    "IRR": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_IRR_PL.gdb.zip",
-    "KnutsonVandenberg": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_KnutsonVandenberg.gdb.zip",
-    "SilvTSI": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_SilvTSI.gdb.zip",
-    "StwrdshpCntrctng": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_StwrdshpCntrctng_PL.gdb.zip",
-    "TimberHarvest": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_TimberHarvest.gdb.zip",
-    "WBBS": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_WBBS_PL.gdb.zip",
-}
-
-# fields to keep at the end
-keep_fields = [
-    "NEPA_DOC_NAME",
-    "TREATMENT_NAME",
-    "ACTIVITY",
-    "METHOD",
-    "EQUIPMENT",
-    "DATE_COMPLETED",
-    "DATE_AWARDED",
-    "FUND_CODE",
-    "NBR_UNITS_ACCOMPLISHED",
-    "fileNmDate",
-]
+# PATHS
+staged_gdb = get_gdb_path("usfs", stage="staged", gdb_name="usfs")
+final_fc = os.path.join(staged_gdb, "usfs_perimeter_dwnld")
 
 
 def download_zip(url_addr, zip_path):
@@ -128,7 +133,7 @@ def standardize_fields(facts_fc, url, datetime_str):
 # ----- START SCRIPT -----
 merge_list = []
 
-for name, url in URLS.items():
+for name, url in FACTS_URLS.items():
     print(f" Processing FACTS data: {name}")
     zip_temp = os.path.join(SCRATCH_DIR, "TEMP_ZIP.zip")
 
@@ -233,7 +238,7 @@ print("Removing unneeded attributes...")
 db_fields = {"OBJECTID", "FID", "Shape", "Shape_Length", "Shape_Area", "GLOBALID"}
 fields_to_delete = [
     fld.name for fld in arcpy.ListFields(final_fc)
-    if fld.name not in keep_fields and fld.name not in db_fields
+    if fld.name not in facts_processing_fields and fld.name not in db_fields
 ]
 
 if fields_to_delete:

@@ -1,3 +1,37 @@
+"""
+---------------------------------------------------------------------------
+Title: USFS FACTS Funding and Activity Reclassification
+
+Purpose:
+    Normalizes USFS accomplishment metadata using a multi-tiered
+    reclassification crosswalk. Translates messy raw activity codes, methods,
+    equipment, and complex multi-sourced funding keys into a clean,
+    standardized tracking schema.
+
+Major Steps:
+    1. Parse and resolve compound, multi-coded funding strings (`FUND_CODE`)
+       into standard, prioritized tracking categories (`funding_update`).
+    2. Apply a strict hierarchical mapping strategy to populate `activity_reclass`:
+        - Tier 1: Match against the primary Activity crosswalk CSV.
+        - Tier 2: Sweep remaining 'SKIP' features using the Method crosswalk.
+        - Tier 3: Sweep remaining 'SKIP' features using the Equipment crosswalk.
+    3. Execute a programmatic fallback for stubborn 'SKIP' categories by
+       pulling tabular data into Pandas to calculate the statistical majority
+       classification for that specific activity code globally.
+    4. Cleanse the dataset by dropping explicitly hidden or unmapped rows
+       (`EXCLUDE` or Nulls) in a single optimized Feature Layer pass.
+    5. Repair geometry and finalize a pristine intermediate layer.
+
+Inputs:
+    usfs_perimeter_dwnld – Raw regional spatial download layer.
+    FS_ACTIVITY_CSV, FS_METHOD_CSV, FS_EQUIP_CSV, FS_FUND_CSV – Crosswalk lookup CSVs.
+
+Outputs:
+    usfs_reclass         – Standardized, clean feature class fully prepared
+                           for the downstream spatial flattening script.
+---------------------------------------------------------------------------
+"""
+
 # Import libraries
 import os
 import arcpy
@@ -10,11 +44,10 @@ from scripts.utils.paths import (get_gdb_path, SCRATCH_DIR,
                                  FS_EQUIP_CSV,
                                  FS_FUND_CSV)
 
-# --- CONFIG ---
 arcpy.env.overwriteOutput = True
 dt = datetime.now()
 
-# Base workspace
+# PATHS
 staged_gdb = get_gdb_path("usfs", stage="staged", gdb_name="usfs")
 input_fc = os.path.join(staged_gdb, "usfs_perimeter_dwnld")
 final_fc = os.path.join(staged_gdb, "usfs_reclass")
@@ -29,7 +62,7 @@ funding_dict = pd.Series(funding_df.fund_source.values,
 csv_final_reclass = os.path.join(SCRATCH_DIR, "post_mechanical_reclass.csv")
 csv_majority = os.path.join(SCRATCH_DIR, "majority_reclass.csv")
 
-# Create copy in RAM
+# Create copy in memory
 print("Creating a temporary working copy....")
 working_copy = arcpy.management.CopyFeatures(input_fc, "memory\\working_copy")
 

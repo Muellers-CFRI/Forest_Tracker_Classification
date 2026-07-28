@@ -1,4 +1,4 @@
-# This is your "Master Schema"
+# Master Schema
 # If the required fields change next year, you only change them HERE.
 
 # DATES
@@ -6,7 +6,35 @@ START_YEAR = 2000
 END_YEAR = 2025
 CURRENT_YEAR = 2026
 
-# FIELDS
+# FACTS source URLs
+FACTS_URLS = {
+    "CommonAttributes": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/S_USA.Actv_CommonAttribute_PL.gdb.zip",
+    "HazFuelTrt": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_HazFuelTrt_PL.gdb.zip",
+    "SilvReforestation": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_SilvReforest.gdb.zip",
+    "BrushDisposal": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_BrushDisposal.gdb.zip",
+    "CFLRP": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_CFLRP_PL.gdb.zip",
+    "IRR": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_IRR_PL.gdb.zip",
+    "KnutsonVandenberg": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_KnutsonVandenberg.gdb.zip",
+    "SilvTSI": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_SilvTSI.gdb.zip",
+    "StwrdshpCntrctng": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_StwrdshpCntrctng_PL.gdb.zip",
+    "TimberHarvest": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_TimberHarvest.gdb.zip",
+    "WBBS": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_WBBS_PL.gdb.zip",
+}
+
+# FIELDS LISTS
+facts_processing_fields = [
+    "NEPA_DOC_NAME",
+    "TREATMENT_NAME",
+    "ACTIVITY",
+    "METHOD",
+    "EQUIPMENT",
+    "DATE_COMPLETED",
+    "DATE_AWARDED",
+    "FUND_CODE",
+    "NBR_UNITS_ACCOMPLISHED",
+    "fileNmDate",
+]
+
 classification_fields = {
     "Original_ID": "LONG",
     "Class_Combine": "TEXT",
