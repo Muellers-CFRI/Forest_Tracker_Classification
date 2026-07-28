@@ -1,4 +1,4 @@
-﻿equipment,equip_reclass
+﻿EQUIPMENT,reclass
 Aerial Ignition Device,SKIP
 Animal  logging                                                          ,Manual
 Auger,Manual
@@ -63,3 +63,6 @@ Tractor (non-harvest),Mechanical
 Tree Shear,Mechanical
 Utility Vehicle,Mechanical
 Utilizer-chip                                              ,Mastication
+Plowing Machine,Mechanical
+Mobile Ground,Mastication
+Excavator,Mechanical

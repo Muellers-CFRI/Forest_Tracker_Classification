@@ -33,42 +33,39 @@ import os
 import arcpy
 import pandas as pd
 from datetime import datetime
+from scripts.utils.paths import get_gdb_path, SCRATCH_GDB
 
 # --- CONFIG ---
 arcpy.env.overwriteOutput = True
 dt = datetime.now()
 datetime_str = dt.strftime("%Y-%m-%d")
 
-# Base workspace
-base_fldr = r"E:\CFRI\FOREST_TRACKER\FEDERAL_DATA_CROSSWALK\USFS_FACTS"
-arcpy.env.workspace = base_fldr
-
 # Directories and files
-data_dir = os.path.join(base_fldr, "OUTPUT")
-FACTS_reclass = os.path.join(data_dir, 'raw_data_copy.gdb/perimeter_FACTS_reclassified')
+staged_gdb = get_gdb_path("usfs", stage="staged", gdb_name="usfs")
+FACTS_reclass = os.path.join(staged_gdb, "usfs_reclass")
+perim_flatten_output  = os.path.join(staged_gdb, "usfs_flatten")
 
-# Scratch and output locations
-scratchFolder = os.path.join(base_fldr, "SCRATCH")
-scratch_gdb = os.path.join(scratchFolder, "scratch.gdb")
+# QA/QC Layers (Saved to SCRATCH_GDB for review)
+find_identical        = os.path.join(SCRATCH_GDB, "find_identical")
+perim_dupes_dissolved = os.path.join(SCRATCH_GDB, "perim_dupes_dissolved")
 
-find_identical = os.path.join(scratch_gdb, "find_identical")
-dupes_layer = os.path.join(scratch_gdb, "dupes_layer")
-nondupes_layer = os.path.join(scratch_gdb, "nondupes_layer")
-perim_dupes_dissolved = os.path.join(scratch_gdb, "perim_dupes_dissolved")
-perim_flatten_output = os.path.join(scratch_gdb, "perim_flatten")
+# Temporary files
+find_identical_table = "memory\\Find_Identical_output"
+dupes_layer          = "memory\\dupes_layer"
+nondupes_layer       = "memory\\nondupes_layer"
 
 # Create working copy
-arcpy.CopyFeatures_management(FACTS_reclass, find_identical)
+arcpy.management.CopyFeatures(FACTS_reclass, find_identical)
 
 # Check for identical shape duplicates
-xy_tolerance = "25 Meters"
-find_identical_table = os.path.join(scratch_gdb, "Find_Identical_output")
-sum_stats_table = os.path.join(scratch_gdb, "Find_Identical_output_SumStats")
+xy_tolerance = "100 Meters"
 
 print("...Start duplicate issues resolve...")
 print(f"Looking for identical shapes with XY tolerance of {xy_tolerance}...")
 
 # Find identical shapes
+arcpy.management.AddField(find_identical, "DuplID", "LONG", field_alias="Duplicate Group ID")
+
 arcpy.management.FindIdentical(
     in_dataset=find_identical,
     out_dataset=find_identical_table,
@@ -83,40 +80,21 @@ if dup_count == 0:
 else:
     print(f"Found {dup_count} duplicate records. Performing statistics...")
 
-    arcpy.analysis.Statistics(
-        in_table=find_identical_table,
-        out_table=sum_stats_table,
-        statistics_fields=[["FEAT_SEQ", "COUNT"]],
-        case_field="FEAT_SEQ"
-    )
+    dup_array = arcpy.da.TableToNumPyArray(find_identical_table, ["IN_FID", "FEAT_SEQ"])
+    df_dups = pd.DataFrame(dup_array)
 
-    arcpy.management.JoinField(
-        in_data=find_identical_table,
-        in_field="FEAT_SEQ",
-        join_table=sum_stats_table,
-        join_field="FEAT_SEQ",
-        fields=["COUNT"]
-    )
+    dup_dict = dict(zip(df_dups["IN_FID"], df_dups["FEAT_SEQ"]))
 
-    arcpy.management.JoinField(
-        in_data=find_identical,
-        in_field="OBJECTID",
-        join_table=find_identical_table,
-        join_field="IN_FID",
-        fields=["FEAT_SEQ", "COUNT"]
-    )
+    print("Writing duplicate IDs to spatial data...")
+    with arcpy.da.UpdateCursor(find_identical, ["OBJECTID", "DuplID"]) as cursor:
+        for row in cursor:
+            oid = row[0]
+            row[1] = dup_dict.get(oid, 0)
+            cursor.updateRow(row)
 
-    arcpy.AlterField_management(
-        in_table=find_identical,
-        field="FEAT_SEQ",
-        new_field_name="DuplID",
-        new_field_alias="Duplicate Group ID",
-        field_type="LONG"
-    )
 
 # Find exact duplicates
-print("Search for duplicates")
-#group_fields = ["DuplID", "ACTIVITY", "DATE_COMPLETED"]
+print("Extracting attributes for duplicate classification processing...")
 group_fields = ["DuplID", "activity_reclass", "DATE_COMPLETED"]
 fields = group_fields + ["OBJECTID"]
 
@@ -138,11 +116,20 @@ else:
 
 # Merge data back together
 df = pd.concat([dupes_df, nondupes_df], ignore_index=True)
-df["DISSOLVE_GRP"] = df["DISSOLVE_GRP"].fillna("None")
+
+
+def clean_group_id(val):
+    if pd.isna(val) or val == "None" or val == 0:
+        return "None"
+    return str(int(float(val)))
+
+
+df["DISSOLVE_GRP"] = df["DISSOLVE_GRP"].apply(clean_group_id)
 
 # Write data back to feature class
-arcpy.AddField_management(find_identical, "DISSOLVE_GRP", "TEXT", field_length=50)
+arcpy.management.AddField(find_identical, "DISSOLVE_GRP", "TEXT", field_length=50)
 value_map = dict(zip(df["OBJECTID"], df["DISSOLVE_GRP"].astype(str)))
+
 with arcpy.da.UpdateCursor(find_identical, ["OBJECTID", "DISSOLVE_GRP"]) as cursor:
     for row in cursor:
         oid = row[0]
@@ -151,15 +138,17 @@ with arcpy.da.UpdateCursor(find_identical, ["OBJECTID", "DISSOLVE_GRP"]) as curs
             cursor.updateRow(row)
 
 # Save SHAPE duplicates and non-duplicates separately
-arcpy.MakeFeatureLayer_management(find_identical, "find_identical_lyr")
+arcpy.management.MakeFeatureLayer(find_identical, "find_identical_lyr")
 
-arcpy.SelectLayerByAttribute_management("find_identical_lyr", "NEW_SELECTION",
+arcpy.management.SelectLayerByAttribute("find_identical_lyr", "NEW_SELECTION",
                                         "DISSOLVE_GRP IS NOT NULL AND DISSOLVE_GRP <> 'None'")
-arcpy.CopyFeatures_management("find_identical_lyr", dupes_layer)
+arcpy.management.CopyFeatures("find_identical_lyr", dupes_layer)
 
-arcpy.SelectLayerByAttribute_management("find_identical_lyr", "NEW_SELECTION",
+arcpy.management.SelectLayerByAttribute("find_identical_lyr", "NEW_SELECTION",
                                         "DISSOLVE_GRP IS NULL OR DISSOLVE_GRP = 'None'")
-arcpy.CopyFeatures_management("find_identical_lyr", nondupes_layer)
+arcpy.management.CopyFeatures("find_identical_lyr", nondupes_layer)
+
+arcpy.management.Delete("find_identical_lyr")
 
 # Dissolve SHAPE duplicates while retaining important attribute information
 print("Dissolve identical features")
@@ -172,11 +161,10 @@ agg_fields = [
     ["FUND_CODE", "CONCATENATE"],
     ["funding_update", "CONCATENATE"],
     ["funding_type", "FIRST"],
-    #["activity_reclass", "FIRST"]
     ["ACTIVITY", "CONCATENATE"]
 ]
 
-arcpy.Dissolve_management(
+arcpy.management.Dissolve(
     in_features=dupes_layer,
     out_feature_class=perim_dupes_dissolved,
     dissolve_field=dissolve_fields,
@@ -192,9 +180,12 @@ for f in fields:
             new_name = f.name.replace(prefix, "")
             arcpy.management.AlterField(perim_dupes_dissolved, f.name, new_name, new_name)
 
+print("Merging structural components into final flattened perimeter...")
 arcpy.Merge_management(
     inputs=[perim_dupes_dissolved, nondupes_layer],
     output=perim_flatten_output
 )
+
+arcpy.management.Delete("memory\\")
 
 print(f"Dissolve complete!\nOutput saved to: {perim_flatten_output}")

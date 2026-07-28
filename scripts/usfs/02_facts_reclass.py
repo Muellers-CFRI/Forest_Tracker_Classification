@@ -3,50 +3,35 @@ import os
 import arcpy
 import pandas as pd
 from datetime import datetime
+from scripts.utils.gis_tools import classify_from_csv
+from scripts.utils.paths import (get_gdb_path, SCRATCH_DIR,
+                                 FS_ACTIVITY_CSV,
+                                 FS_METHOD_CSV,
+                                 FS_EQUIP_CSV,
+                                 FS_FUND_CSV)
 
 # --- CONFIG ---
 arcpy.env.overwriteOutput = True
 dt = datetime.now()
 
 # Base workspace
-base_fldr = r"E:\CFRI\FOREST_TRACKER\FEDERAL_DATA_CROSSWALK\USFS_FACTS"
-arcpy.env.workspace = base_fldr
+staged_gdb = get_gdb_path("usfs", stage="staged", gdb_name="usfs")
+input_fc = os.path.join(staged_gdb, "usfs_perimeter_dwnld")
+final_fc = os.path.join(staged_gdb, "usfs_reclass")
 
-# Input directories and files
-input_dir = os.path.join(base_fldr, "INPUT", "reclass_csv")
-activity_csv  = os.path.join(input_dir, "ACTIVITY_reclass.csv")
-method_csv    = os.path.join(input_dir, "METHOD_reclass.csv")
-equipment_csv = os.path.join(input_dir, "EQUIPMENT_reclass.csv")
-funding_csv = os.path.join(input_dir, "FUNDING_reclass.csv")
+# Load funding reclass table
+funding_df = pd.read_csv(FS_FUND_CSV, encoding="utf-8-sig")
 
-# Scratch and output locations
-scratch_dir = os.path.join(base_fldr, "SCRATCH")
-output_dir  = os.path.join(base_fldr, "OUTPUT", "raw_data_copy.gdb")
-
-outtables             = os.path.join(scratch_dir, "tables")
-perim_FACTS           = os.path.join(output_dir, "perimeter_FACTS")
-perim_temp_output     = os.path.join(scratch_dir, "scratch.gdb", "perim_FACTS_reclass")
-perim_reclass_output  = os.path.join(output_dir, "perimeter_FACTS_reclassified")
-
-
-# Create copy of perimeter_FACTS
-print("Creating a temporary working copy....")
-perim_test = arcpy.CopyFeatures_management(perim_FACTS, perim_temp_output)
-
-# --- Load Reclass Tables ---
-activity_df = pd.read_csv(activity_csv, encoding="utf-8-sig")
-method_df = pd.read_csv(method_csv, encoding="utf-8-sig")
-equipment_df = pd.read_csv(equipment_csv, encoding="utf-8-sig")
-funding_df = pd.read_csv(funding_csv, encoding="utf-8-sig")
-
-activity_dict = pd.Series(activity_df.activity_reclass.values,
-                          index=activity_df.activity).to_dict()
-method_dict = pd.Series(method_df.method_reclass.values,
-                        index=method_df.method).to_dict()
-equipment_dict = pd.Series(equipment_df.equip_reclass.values,
-                           index=equipment_df.equipment).to_dict()
 funding_dict = pd.Series(funding_df.fund_source.values,
                          index=funding_df.fund_code).to_dict()
+
+# QA/QC csv outputs
+csv_final_reclass = os.path.join(SCRATCH_DIR, "post_mechanical_reclass.csv")
+csv_majority = os.path.join(SCRATCH_DIR, "majority_reclass.csv")
+
+# Create copy in RAM
+print("Creating a temporary working copy....")
+working_copy = arcpy.management.CopyFeatures(input_fc, "memory\\working_copy")
 
 
 def replace_fund_codes(fund_code_str, fund_dict):
@@ -72,11 +57,11 @@ def replace_fund_codes(fund_code_str, fund_dict):
 
 
 # Update funding codes to readable
-print("Update funding codes...")
-arcpy.AddField_management(perim_test, "funding_update", "TEXT")
-arcpy.AddField_management(perim_test, "funding_type", "TEXT")
+print("Updating funding codes...")
+arcpy.management.AddField(working_copy, "funding_update", "TEXT")
+arcpy.management.AddField(working_copy, "funding_type", "TEXT")
 
-with arcpy.da.UpdateCursor(perim_test, ["FUND_CODE", "funding_update", "funding_type"]) as cursor:
+with arcpy.da.UpdateCursor(working_copy, ["FUND_CODE", "funding_update", "funding_type"]) as cursor:
     for row in cursor:
         fund_code = row[0]
         new_val = replace_fund_codes(fund_code, funding_dict)
@@ -95,82 +80,51 @@ with arcpy.da.UpdateCursor(perim_test, ["FUND_CODE", "funding_update", "funding_
 
 # Reclassify FACTS ACTIVITY attribute field
 print("Reclassify by Activity...")
-arcpy.AddField_management(perim_test, "activity_reclass", "TEXT")
+arcpy.management.AddField(working_copy, "activity_reclass", "TEXT")
 
-with arcpy.da.UpdateCursor(perim_test, ["ACTIVITY", "activity_reclass"]) as cursor:
-    for row in cursor:
-        act = row[0]
-        if act is None:
-            continue
-        new_val = activity_dict.get(act)
-        if new_val:
-            row[1] = new_val
-            cursor.updateRow(row)
-        else:
-            print(f"Activity not found in dictionary: {act}")
-
-# Delete EXCLUDE rows in one pass using a feature layer
-print("Deleting excluded rows...")
-arcpy.MakeFeatureLayer_management(perim_test, "to_delete", "activity_reclass = 'EXCLUDE'")
-arcpy.DeleteRows_management("to_delete")
-arcpy.Delete_management("to_delete")
-
-# Export check table for review
-arcpy.TableToTable_conversion(perim_test, outtables, "activities_reclass.csv")
+classify_from_csv(
+    csv_path=FS_ACTIVITY_CSV,
+    fc=working_copy,
+    source_fields=["ACTIVITY"],
+    field_map={"reclass": "activity_reclass"}
+)
 
 # Reclassify METHOD attribute field
 print("Reclassify by Method...")
-with arcpy.da.UpdateCursor(perim_test, ["METHOD", "activity_reclass"], "activity_reclass = 'SKIP'") as cursor:
-    for row in cursor:
-        mthd = row[0]
-        if mthd is None:
-            continue
-        new_val = method_dict.get(mthd)
-        if new_val:
-            row[1] = new_val
-            cursor.updateRow(row)
-        else:
-            print(f"Activity not found in dictionary: {mthd}")
-
-# Create a csv file of method classified activites and remaining 'SKIP' activities
-arcpy.TableToTable_conversion(perim_test, outtables, "method_reclass.csv")
+classify_from_csv(
+    csv_path=FS_METHOD_CSV,
+    fc=working_copy,
+    source_fields=["METHOD"],
+    field_map={"reclass": "activity_reclass"},
+    where_clause="activity_reclass = 'SKIP'"
+)
 
 # Reclassify EQUIPMENT attribute field
 print("Reclassify by Equipment...")
-with arcpy.da.UpdateCursor(perim_test, ["EQUIPMENT", "activity_reclass"], "activity_reclass = 'SKIP'") as cursor:
-    for row in cursor:
-        equip = row[0]
-        if equip is None:
-            continue
-        new_val = equipment_dict.get(equip)
-        if new_val:
-            row[1] = new_val
-            cursor.updateRow(row)
-        else:
-            print(f"Activity not found in dictionary: {equip}")
-
-# Create a csv file of method classified activites and remaining 'SKIP' activities
-arcpy.TableToTable_conversion(perim_test, outtables, "equipment_reclass.csv")
-
-print("Mechanical and Removal method cleanup reclassification")
+classify_from_csv(
+    csv_path=FS_EQUIP_CSV,
+    fc=working_copy,
+    source_fields=["EQUIPMENT"],
+    field_map={"reclass": "activity_reclass"},
+    where_clause="activity_reclass = 'SKIP'"
+)
 
 # --- Post sweep cleanup and reclassification
-
-# Only target features that are currently 'SKIP' and have METHOD filled
+print("Running post-sweep mechanical and removal cleanups...")
 q1 = "activity_reclass = 'SKIP' AND METHOD IS NOT NULL"
-with arcpy.da.UpdateCursor(perim_test, ["METHOD", "activity_reclass"], q1) as cursor:
+with arcpy.da.UpdateCursor(working_copy, ["METHOD", "activity_reclass"], q1) as cursor:
     for method, act_reclass in cursor:
         if method in ("Mechanical", "Removal"):
             cursor.updateRow((method, method))
     del cursor
 
-# Export for QC
-final_reclass = os.path.join(outtables, "post_mechanical_reclass.csv")
-arcpy.TableToTable_conversion(perim_test, outtables, "post_mechanical_reclass.csv")
+fields = [f.name for f in arcpy.ListFields(working_copy)]
+data = [row for row in arcpy.da.SearchCursor(working_copy, fields)]
+pd.DataFrame(data, columns=fields).to_csv(os.path.join(SCRATCH_DIR, "post_mechanical_reclass.csv"), index=False)
 
 # Start pandas code
 print("Classifying remaining 'SKIPPED' activites by Activity majority classification")
-df = pd.read_csv(final_reclass)
+df = pd.read_csv(csv_final_reclass, low_memory=False)
 df = df[df['activity_reclass'] != 'SKIP']
 
 # Compute the most common reclass per Activity
@@ -179,27 +133,33 @@ major_activity = (
       .agg(lambda x: x.value_counts().index[0] if not x.value_counts().empty else None)  # most frequent label
       .reset_index()
 )
-
-majority_csv = os.path.join(outtables, "majority_reclass.csv")
-major_activity.to_csv(majority_csv, index=False)
+major_activity.to_csv(csv_majority, index=False)
 
 # Reclassify by majority activity
+majorityDict = pd.Series(
+    major_activity.activity_reclass.values,
+    index=major_activity.ACTIVITY
+).to_dict()
+
 print("Applying majority-based reclassification")
-majorityDict = {
-    row[0]: row[1]
-    for row in arcpy.da.SearchCursor(majority_csv, ["ACTIVITY", "activity_reclass"])
-}
-
 q2 = "activity_reclass = 'SKIP'"
-with arcpy.da.UpdateCursor(perim_test, ["ACTIVITY", "activity_reclass"], q2) as cursor:
-    for act, act_reclass in cursor:
-        if act in majorityDict:
-            cursor.updateRow((act, majorityDict[act]))
-        # Skips None safely — no else needed
-    del cursor
+with arcpy.da.UpdateCursor(working_copy, ["ACTIVITY", "activity_reclass"], q2) as cursor:
+    for row in cursor:
+        if row[0] in majorityDict:
+            row[1] = majorityDict[row[0]]
+            cursor.updateRow(row)
 
-print("Create copy of classified FACTS perimeters")
-arcpy.RepairGeometry_management(perim_test)
-arcpy.CopyFeatures_management(perim_test, perim_reclass_output)
+# Delete EXCLUDE rows in one pass using a feature layer
+print("Deleting excluded or empty rows...")
+sql_query = "activity_reclass = 'EXCLUDE' OR activity_reclass IS NULL"
+arcpy.management.MakeFeatureLayer(working_copy, "to_delete", sql_query)
+arcpy.management.DeleteRows("to_delete")
+arcpy.management.Delete("to_delete")
+
+print("Finalizing reclassified feature class...")
+arcpy.management.RepairGeometry(working_copy)
+arcpy.management.CopyFeatures(working_copy, final_fc)
+
+arcpy.management.Delete("memory\\working_copy")
 
 print("Completed! Run Time: %s\n\n" % (datetime.now() - dt))

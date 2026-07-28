@@ -3,33 +3,8 @@ import os
 import re
 import csv
 
-# All ADD fields
-classification_fields = {
-    "Original_ID": "LONG",
-    "Class_Combine": "TEXT",
-    "ActClass_1": "TEXT", "Keyword_1": "TEXT",
-    "ActClass_2": "TEXT", "Keyword_2": "TEXT",
-    "ActClass_3": "TEXT", "Keyword_3": "TEXT"
-}
-
-activity_fields = {
-    "ActClass": "TEXT",
-    "Keyword": "TEXT"
-}
-
-
-def add_new_fields(fc, final_field_list):
-    """ Add final gdb fields to perimeter feature classes """
-    existing_fields = [f.name for f in arcpy.ListFields(fc)]
-    for field_name, field_type in final_field_list.items():
-        if field_name not in existing_fields:
-            arcpy.AddField_management(fc, field_name, field_type)
-
-
-def filter_by_year(fc, start_year, end_year, yr_filter_output):
-    filter_years_clause = f"YEAR_COMP >= {start_year} AND YEAR_COMP <= {end_year}"
-    arcpy.MakeFeatureLayer_management(fc, "year_filter_lyr", filter_years_clause)
-    arcpy.CopyFeatures_management("year_filter_lyr", yr_filter_output)
+from config.config import classification_fields, activity_fields
+from scripts.utils.gis_tools import add_fields_from_schema
 
 
 def clean_text(s: str) -> str:
@@ -41,41 +16,6 @@ def clean_text(s: str) -> str:
     s = re.sub(r"[\\/]", " ", s)             # turn slashes into spaces
     s = re.sub(r"\s+", " ", s)               # collapse multiple spaces
     return s.strip()
-
-
-def split_outputs(combined_fc, delete_out, unclass_out, class_out):
-    # First, delete "DELETE" rows that have other valid activities in Activity_#
-    with arcpy.da.UpdateCursor(combined_fc, ["ActClass_1", "ActClass_2", "ActClass_3", "ActClass"]) as cursor:
-        for row in cursor:
-            activity_fields = row[:3]
-            final_activity = row[3]
-
-            if final_activity == "DELETE":
-                # Check if ANY of the activity fields contain something other than DELETE/None
-                if any(a not in (None, "DELETE") for a in activity_fields):
-                    cursor.deleteRow()
-
-    conditions = {
-        delete_out: "ActClass = 'DELETE'",
-        unclass_out: "ActClass IN ('UNCLASSIFIED', 'TREE CHECK')",
-        class_out: "ActClass IS NOT NULL AND ActClass NOT IN ('DELETE', 'UNCLASSIFIED', 'TREE CHECK')"
-    }
-
-    arcpy.MakeFeatureLayer_management(combined_fc, "out_layer")
-    for out_fc_path, sql in conditions.items():
-        arcpy.SelectLayerByAttribute_management("out_layer", "NEW_SELECTION", sql)
-        arcpy.CopyFeatures_management("out_layer", out_fc_path)
-
-        delete_flds = ["ActClass_1", "Keyword_1", "ActClass_2", "Keyword_2", "ActClass_3", "Keyword_3"]
-        existing_fields = [f.name for f in arcpy.ListFields(out_fc_path)]
-        for fld in delete_flds:
-            if fld in existing_fields:
-                arcpy.DeleteField_management(out_fc_path, fld)
-
-        count = int(arcpy.GetCount_management("out_layer").getOutput(0))
-        print(f"{out_fc_path}: {count} features selected")  # debug
-
-    arcpy.Delete_management("out_layer")
 
 
 def classify_by_keyword(fc, activity_csv, class_field):
@@ -99,6 +39,10 @@ def classify_by_keyword(fc, activity_csv, class_field):
 
     activity_fieldnames = [f for f in classification_fields.keys() if f != "Original_ID" and f != "Class_Combine"]
 
+    print(f"FC: {fc}")
+    print(f"Class Field: {class_field}")
+    print(f"Activity Names: {activity_fieldnames}")
+
     with arcpy.da.UpdateCursor(fc, [class_field] + activity_fieldnames) as cursor:
         for row in cursor:
             text = row[0]
@@ -116,7 +60,7 @@ def classify_by_keyword(fc, activity_csv, class_field):
                     matches.append({"activity": rule["activity"], "regex": rule["regex"].pattern})
                     used_spans.append(span)
 
-                print(f"TEXT: {text} -  matches: {matches}")
+                #print(f"TEXT: {text} -  matches: {matches}")
 
             unique_matches = []
             seen_activities = set()
@@ -135,63 +79,46 @@ def classify_by_keyword(fc, activity_csv, class_field):
             cursor.updateRow(row)
 
 
-def classify_treatments(input_fc, fields_to_classify, date_field,
-                        activity_csv, output_fc, start_year=None, end_year=None):
+def classify_treatments(input_fc, fields_to_classify, activity_csv, output_fc):
     """Classify treatments by regex keywords and date filter."""
+    print("Classifying treatments by keyword")
 
     # Copy input to preserve source
     temp_fc = arcpy.CopyFeatures_management(input_fc, arcpy.env.scratchGDB + "/fc")
 
+    add_fields_from_schema(temp_fc, classification_fields)
+    add_fields_from_schema(temp_fc, activity_fields)
+
     # Build cursor field list: input text fields + Class_Combine + date + YEAR_COMP
-    cursor_fields = fields_to_classify + ["Class_Combine", date_field, "YEAR_COMP"]
+    cursor_fields = fields_to_classify + ["Class_Combine"]
+    combine_idx = len(fields_to_classify)
 
     with arcpy.da.UpdateCursor(temp_fc, cursor_fields) as cursor:
         for row in cursor:
-            # Combine selected text fields
-            combined = " ".join([str(row[i]) for i in range(len(fields_to_classify)) if row[i]])
-            row[len(fields_to_classify)] = combined if combined else None
+            # Combine selected text fields, ignoring None values
+            text_values = [str(row[i]) for i in range(len(fields_to_classify)) if row[i]]
+            combined_text = " ".join(text_values)
 
-            # Extract year
-            date_val = row[len(fields_to_classify) + 1]
-            if date_val:
-                if hasattr(date_val, "year"):
-                    year_val = date_val.year
-                elif isinstance(date_val, (int, float)):
-                    year_val = int(date_val)
-                else:
-                    year_val = None
-            else:
-                year_val = None
-
-            row[len(fields_to_classify) + 2] = year_val
+            row[combine_idx] = combined_text[0:254] if combined_text.strip() else None
             cursor.updateRow(row)
 
-    # Filter by year
-    if start_year and end_year:
-        filter_by_year(temp_fc, start_year, end_year, output_fc)
-    else:
-        arcpy.CopyFeatures_management(temp_fc, output_fc)
-
     # Add activity fields and classify by regex
-    classify_by_keyword(output_fc, activity_csv, "Class_Combine")
+    classify_by_keyword(temp_fc, activity_csv, "Class_Combine")
 
-    with arcpy.da.UpdateCursor(output_fc, ["ActClass_1"]) as cursor:
+    with arcpy.da.UpdateCursor(temp_fc, ["ActClass_1"]) as cursor:
         for row in cursor:
-            if row[0] is None:
+            if row[0] is None or str(row[0]).strip() == "":
                 row[0] = "UNCLASSIFIED"
             cursor.updateRow(row)
 
     # Cleanup
-    arcpy.RepairGeometry_management(output_fc)
+    arcpy.RepairGeometry_management(temp_fc)
+    arcpy.CopyFeatures_management(temp_fc, output_fc)
     arcpy.Delete_management(temp_fc)
     return output_fc
 
 
 def explode_activity(fc, class_fields, out_fc):
-    with arcpy.da.UpdateCursor(fc, ["OID@", "Original_ID"]) as cursor:
-        for oid, orig in cursor:
-            cursor.updateRow((oid, oid))
-
     # Create output feature class
     sr = arcpy.Describe(fc).spatialReference
     if arcpy.Exists(out_fc):
@@ -210,6 +137,8 @@ def explode_activity(fc, class_fields, out_fc):
 
     # --- Build field list for cursors ---
     all_fields = [f.name for f in keep_fields] + ["SHAPE@"]
+    existing_fields = [f.name for f in arcpy.ListFields(fc)]
+    has_csv_field = "ACT_CSV" in existing_fields
 
     # --- Process rows ---
     with arcpy.da.SearchCursor(fc, all_fields) as cursor_in, \
@@ -224,18 +153,77 @@ def explode_activity(fc, class_fields, out_fc):
             act_values = [row_dict.get(f) for f in activities[2::2]]
             key_values = [row_dict.get(f) for f in activities[3::2]]
 
-            for activity, keyword in zip(act_values, key_values):
-                if activity:  # only explode non-empty
+            explosion_list = list(zip(act_values, key_values))
+
+            if has_csv_field and row_dict.get("ACT_CSV"):
+                explosion_list.append((row_dict.get("ACT_CSV"), "Official Agency Reclass"))
+
+            seen_activities = set()
+
+            for activity, keyword in explosion_list:
+                if activity and activity not in seen_activities:  # only explode non-empty
                     # create a copy of row_dict and update Activity/Keyword
                     out_row_dict = row_dict.copy()
-                    if "ActClass" in out_row_dict:
-                        out_row_dict["ActClass"] = activity
+                    if "activity_reclass" in out_row_dict:
+                        out_row_dict["activity_reclass"] = activity
                     if "Keyword" in out_row_dict:
                         out_row_dict["Keyword"] = keyword
 
                     # maintain field order for insert
                     out_row = tuple(out_row_dict[f] for f in all_fields[:-1]) + (shape,)
                     cursor_out.insertRow(out_row)
+                    seen_activities.add(activity)
 
     arcpy.RepairGeometry_management(out_fc)
     print(f"Exploded activities written to: {out_fc}")
+
+
+def split_outputs(combined_fc, delete_out, unclass_out, class_out):
+    # First, delete "DELETE" rows that have other valid activities in Activity_#
+    existing_fields = [f.name for f in arcpy.ListFields(combined_fc)]
+    cursor_flds = ["activity_reclass"]
+    optional_flds = ["ActClass_1", "ActClass_2", "ActClass_3", "ACT_CSV"]
+    active_optionals = [f for f in optional_flds if f in existing_fields]
+
+    with arcpy.da.UpdateCursor(combined_fc, cursor_flds + active_optionals) as cursor:
+        for row in cursor:
+            final_activity = row[0]
+            reclass_activities = row[1:]
+
+            if final_activity == "DELETE":
+                # Check if ANY of the activity fields contain something other than DELETE/None
+                if any(a not in (None, "DELETE", "UNCLASSIFIED") for a in reclass_activities):
+                    cursor.deleteRow()
+
+    conditions = {
+        delete_out: "activity_reclass = 'DELETE'",
+        unclass_out: "activity_reclass IN ('UNCLASSIFIED', 'TREE CHECK')",
+        class_out: "activity_reclass IS NOT NULL AND activity_reclass NOT IN ('DELETE', 'UNCLASSIFIED', 'TREE CHECK')"
+    }
+
+    arcpy.MakeFeatureLayer_management(combined_fc, "out_layer")
+    for out_fc_path, sql in conditions.items():
+        arcpy.SelectLayerByAttribute_management("out_layer", "NEW_SELECTION", sql)
+        arcpy.CopyFeatures_management("out_layer", out_fc_path)
+
+        delete_flds = ["ActClass_1", "Keyword_1", "ActClass_2", "Keyword_2", "ActClass_3", "Keyword_3"]
+        existing_fields = [f.name for f in arcpy.ListFields(out_fc_path)]
+        for fld in delete_flds:
+            if fld in existing_fields:
+                arcpy.DeleteField_management(out_fc_path, fld)
+
+        count = int(arcpy.GetCount_management("out_layer").getOutput(0))
+        print(f"{out_fc_path}: {count} features selected")  # debug
+
+    arcpy.Delete_management("out_layer")
+
+
+def finalize_and_split(combined_fc, delete_out, unclass_out, class_out):
+    """Wrapper to handle explode and split logic"""
+    exploded_fc = combined_fc + "_vertical"
+
+    explode_activity(combined_fc, classification_fields, exploded_fc)
+    split_outputs(exploded_fc, delete_out, unclass_out, class_out)
+
+    if arcpy.Exists(exploded_fc):
+        arcpy.Delete_management(exploded_fc)

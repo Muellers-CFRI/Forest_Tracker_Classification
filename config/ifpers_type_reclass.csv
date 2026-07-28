@@ -1,0 +1,48 @@
+Type,Category,SubType,reclass
+Broadcast,Planned Ignition,,Broadcast Burn
+Underburn,Planned Ignition,,Broadcast Burn
+Animal Damage Control,Natural Resources,,DELETE
+Biocontrol,Biological,,DELETE
+Biocontrol,Natural Resources,Forestry,DELETE
+Biocontrol,Natural Resources,Invasive Species,DELETE
+Biocontrol,Natural Resources,Other,DELETE
+Chemical Treatment - Herbicide,Natural Resources,Invasive Species,DELETE
+Chemical Treatment - Herbicide,Natural Resources,Terrestrial Habitat,DELETE
+Debris Removal,Human Life and Safety,Other,DELETE
+Herbicide,Chemical,,DELETE
+Herbivory,Biological,,DELETE
+Install Erosion Barriers,Human Life and Safety,,DELETE
+Manual Treatment,Natural Resources,Invasive Species,DELETE
+Manual Treatment,Natural Resources,Invasive Species,DELETE
+Minor Asset Stabilization,Human Life and Safety,,DELETE
+Noxious Weed Detection,Natural Resources,Invasive Species,DELETE
+Protect Asset,Property,Other,DELETE
+Replace Minor Asset,Minor Asset Repair / Replacement,Other,DELETE
+Replace Minor Asset,Minor Asset Repair / Replacement,Recreation,DELETE
+Site Preparation,Natural Resources,Other,DELETE
+Site Preparation,Natural Resources,Terrestrial Habitat,DELETE
+Stabilize Asset,Property,Resource Management,DELETE
+Wildfire,Unplanned Ignition,,DELETE
+Lop and Scatter,Mechanical,,Lop and Scatter
+Fuel Compaction,Mechanical,Mastication,Mastication
+Fuel Compaction,Mechanical,Mowing,Mastication
+Fuel Compaction,Mechanical,,Mastication
+"Clearcut, Chaining",Mechanical,,Mechanical
+Thinning,Mechanical,,Mechanical
+Fuel Compaction,Mechanical,Chipping,Mulching
+Fuel Compaction,Mechanical,Crushing,Mulching
+"Grinding, Chipping, Crushing",Mechanical,,Mulching
+Pile Burn,Planned Ignition,,Pile Burn
+Pile,Mechanical,,Pile Fuels
+Planting,Natural Resources,Terrestrial Habitat,Plant Trees
+Biomass Removal,Mechanical,,Removal
+Planting,Biological,,TREE CHECK
+Planting,Natural Resources,Forestry,TREE CHECK
+Planting,Natural Resources,Other,TREE CHECK
+Planting,Natural Resources,Riparian,TREE CHECK
+Seeding,Biological,,TREE CHECK
+Seeding - Aerial,Natural Resources,Terrestrial Habitat,TREE CHECK
+Seeding - Ground,Natural Resources,Terrestrial Habitat,TREE CHECK
+Seeding - Manual,Natural Resources,Other,TREE CHECK
+Seeding - Manual,Natural Resources,Terrestrial Habitat,TREE CHECK
+Seeding - Manual,Natural Resources,Terrestrial Habitat,TREE CHECK

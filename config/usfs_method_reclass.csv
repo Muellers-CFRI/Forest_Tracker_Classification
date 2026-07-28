@@ -1,4 +1,4 @@
-method,method_reclass,list of possible equipment used,notes
+METHOD,reclass,list of possible equipment used,notes
 Animal Logging,Manual,animal logging,
 Chemical,Manual,aerial sprayer; backpack sprayer; broadcast seeder (hand); hand sprayer; hand spreader; hand work; livestock sprayer; mobile ground sprayer; spreader,
 Chipping,Mastication,chipper; mulcher; roller chopper; shredder,
@@ -28,3 +28,7 @@ Tractor Logging,Mechanical,feller buncher; ground base skidder; hand work; loade
 Utilizer - Chip,SKIP,Mechanized systems (felling/bucking/delimbing); utilizer-chip,
 Walk-through,Mechanical,,
 NA,SKIP,,
+General Reconnaissance,EXCLUDE,,
+Survey Methods,EXCLUDE,,
+Stump shearing,Mechanical,,
+Subsoiling,SKIP,,

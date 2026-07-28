@@ -4,28 +4,23 @@ import arcpy
 import urllib.request
 from datetime import datetime
 from zipfile import ZipFile
+from scripts.utils.paths import get_gdb_path, RAW_GDB, SCRATCH_DIR
+from config.config import START_YEAR, END_YEAR
 
 # ----- CONFIG -----
 arcpy.env.overwriteOutput = True
 
-# base workspace
-base_fldr = 'E:/CFRI/FOREST_TRACKER/FEDERAL_DATA_CROSSWALK/USFS_FACTS'
-arcpy.env.workspace = base_fldr
-
 # PC Directory
-out_fldr = os.path.join(base_fldr, "OUTPUT")
-scratchFolder = os.path.join(base_fldr, "SCRATCH")
-scratch_gdb = os.path.join(scratchFolder, "scratch.gdb")
-final_fc = os.path.join(out_fldr, "raw_data_copy.gdb/perimeter_FACTS")
+staged_gdb = get_gdb_path("usfs", stage="staged", gdb_name="usfs")
+final_fc = os.path.join(staged_gdb, "usfs_perimeter_dwnld")
 
 # date filtering
 dt = datetime.now()
 datetime_str = dt.strftime("%Y-%m-%d")
-dt_start = '2000-01-01'  # START DATE for filter
-dt_end = '2024-12-31'  # END DATE for filter
 
 # FACTS source URLs
 URLS = {
+    "CommonAttributes": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/S_USA.Actv_CommonAttribute_PL.gdb.zip",
     "HazFuelTrt": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_HazFuelTrt_PL.gdb.zip",
     "SilvReforestation": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_SilvReforest.gdb.zip",
     "BrushDisposal": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_BrushDisposal.gdb.zip",
@@ -46,6 +41,7 @@ keep_fields = [
     "METHOD",
     "EQUIPMENT",
     "DATE_COMPLETED",
+    "DATE_AWARDED",
     "FUND_CODE",
     "NBR_UNITS_ACCOMPLISHED",
     "fileNmDate",
@@ -63,7 +59,7 @@ def download_zip(url_addr, zip_path):
         return False
 
 
-def unzip_extract_fgdb(zip_path, scratch_folder, scratch_gdb):
+def unzip_extract_fgdb(zip_path, scratch_folder, unique_name):
     """unzip file, extract FGDB + feature class, return path"""
     try:
         print(f"...UnZipping file:      {os.path.basename(zip_path)}")
@@ -71,33 +67,39 @@ def unzip_extract_fgdb(zip_path, scratch_folder, scratch_gdb):
             file_list = zip_ref.namelist()
             zip_ref.extractall(scratch_folder)
 
-        fgdb_path = os.path.join(scratchFolder, os.path.dirname(file_list[0]))
+        fgdb_path = os.path.join(scratch_folder, os.path.dirname(file_list[0]))
         print(f"Extracted geodatabase {fgdb_path}")
 
         arcpy.env.workspace = fgdb_path
         fc_list = arcpy.ListFeatureClasses()
         if not fc_list:
             raise ValueError(f"No feature classes found in {fgdb_path}")
+
         fc_path = os.path.join(fgdb_path, fc_list[0])
-        facts_fc = arcpy.FeatureClassToFeatureClass_conversion(fc_path, scratch_gdb, "tmp_perim")
-        print(f"Using feature class: {fc_path}")
-        return facts_fc
+        memory_fc = f"memory\\{unique_name}_extracted"
+        arcpy.conversion.FeatureClassToFeatureClass(fc_path, "memory", f"{unique_name}_extracted")
+
+        return memory_fc
 
     except Exception as e:
         print(f"Could not unzip or extract feature class: {e}")
-        return None, None
+        return None
 
 
-def clip_to_colorado(facts_fc, output_fc):
+def clip_to_colorado(facts_fc, unique_name):
     """Clip data to Colorado extent and copy to final output"""
     try:
         print("...Clipping to Colorado extent.")
-        arcpy.MakeFeatureLayer_management(facts_fc, "facts_fc_lyr", "STATE_ABBR = 'CO'")
-        arcpy.CopyFeatures_management("facts_fc_lyr", output_fc)
-        return True
+        memory_clip = f"memory\\{unique_name}_CO"
+
+        arcpy.management.MakeFeatureLayer(facts_fc, "facts_fc_lyr", "STATE_ABBR = 'CO'")
+        arcpy.management.CopyFeatures("facts_fc_lyr", memory_clip)
+        arcpy.management.Delete("facts_fc_lyr")
+        return memory_clip
+
     except:
-        print(f"No Colorado data found or clipping failed.\n{e}")
-        return False
+        print(f"No Colorado data found or clipping failed.")
+        return None
 
 
 def standardize_fields(facts_fc, url, datetime_str):
@@ -112,19 +114,15 @@ def standardize_fields(facts_fc, url, datetime_str):
     # Rename fields if they exist
     for old, new in rename_map.items():
         try:
-            arcpy.AlterField_management(facts_fc, old, new, new)
+            arcpy.management.AlterField(facts_fc, old, new, new)
             print(f"Renamed {old} -> {new}")
         except:
             pass
 
     # Add file/date field
-    arcpy.AddField_management(facts_fc, "fileNmDate", "TEXT", 50)
-    arcpy.CalculateField_management(
-        facts_fc,
-        "fileNmDate",
-        f'"{os.path.basename(url)[:-4]} {datetime_str}"',
-        "PYTHON_9.3"
-    )
+    arcpy.management.AddField(facts_fc, "fileNmDate", "TEXT", field_length=50)
+    val = f"{os.path.basename(url)[:-4]} {datetime_str}"
+    arcpy.management.CalculateField(facts_fc, "fileNmDate", f"'{val}'", "PYTHON3")
 
 
 # ----- START SCRIPT -----
@@ -132,109 +130,124 @@ merge_list = []
 
 for name, url in URLS.items():
     print(f" Processing FACTS data: {name}")
-    zip_temp = os.path.join(scratchFolder, "TEMP_ZIP.zip")
-    output_fc = os.path.join(scratch_gdb, f"FACTSperimters_{name}")
+    zip_temp = os.path.join(SCRATCH_DIR, "TEMP_ZIP.zip")
 
     # Download + unzip
     if not download_zip(url, zip_temp):
         continue
 
-    facts_fc = unzip_extract_fgdb(zip_temp, scratchFolder, scratch_gdb)
+    facts_fc = unzip_extract_fgdb(zip_temp, SCRATCH_DIR, unique_name=name)
     if not facts_fc:
         continue
 
     # Clip, repair, and clean fields
-    clip_to_colorado(facts_fc, output_fc)
-    arcpy.RepairGeometry_management(output_fc, "DELETE_NULL")
-    standardize_fields(output_fc, url, datetime_str=datetime_str)
-    merge_list.append(output_fc)
+    colorado_fc = clip_to_colorado(facts_fc, unique_name=name)
+    arcpy.management.Delete(facts_fc)
+    if not colorado_fc or int(arcpy.management.GetCount(colorado_fc)[0]) == 0:
+        print(f"No records found for {name} in Colorado. Skipping.")
+        if colorado_fc:
+            arcpy.management.Delete(colorado_fc)
+        continue
 
-merged_fc = arcpy.Merge_management(merge_list, os.path.join(scratch_gdb, "merged_perimeters"))
+    arcpy.management.RepairGeometry(colorado_fc, "DELETE_NULL")
+    standardize_fields(colorado_fc, url, datetime_str=datetime_str)
+    merge_list.append(colorado_fc)
+
+    raw_archive_path = os.path.join(RAW_GDB, f"FACTS_{name}")
+    print(f"Archiving raw national dataset to: {raw_archive_path}")
+    arcpy.management.CopyFeatures(colorado_fc, raw_archive_path)
+
+    if os.path.exists(zip_temp):
+        os.remove(zip_temp)
+
+print("\nMerging all processed perimeters...")
+merged_fc = arcpy.management.Merge(merge_list, "memory\\merged_perimeters")
+
+for mem_fc in merge_list:
+    arcpy.management.Delete(mem_fc)
 
 # Preprocess merged perimters
 print("Preprocessing FACTS Perimeter Feature Class")
 print("Subsetting perimeters based on user selected time frame")
 
+dt_start = f"{START_YEAR}-01-01 00:00:00"
+dt_end = f"{END_YEAR}-12-31 23:59:59"
+
 where_clause = (
-    f"DATE_COMPLETED >= timestamp '{dt_start} 00:00:00' " 
-    f"AND DATE_COMPLETED <= timestamp '{dt_end} 00:00:00'"
+    f"(DATE_COMPLETED BETWEEN timestamp '{dt_start}' AND timestamp '{dt_end}') "
+    f"OR "
+    f"(DATE_AWARDED BETWEEN timestamp '{dt_start}' AND timestamp '{dt_end}')"
 )
 
-arcpy.MakeFeatureLayer_management(merged_fc, "date_subset_lyr", where_clause )
-tmp_copy = arcpy.CopyFeatures_management("date_subset_lyr", os.path.join(scratch_gdb, "tmp_copy_date"))
+arcpy.management.MakeFeatureLayer(merged_fc, "date_subset_lyr", where_clause)
+tmp_copy = arcpy.management.CopyFeatures("date_subset_lyr", "memory\\tmp_copy_date")
+arcpy.management.Delete("date_subset_lyr")
+arcpy.management.Delete(merged_fc)
 
-# Project to NAD 1983 UTM Zone 13 if needed
+# Update DATE_COMPLETED with DATE_AWARDED if empty
+with arcpy.da.UpdateCursor(tmp_copy, ["DATE_COMPLETED", "DATE_AWARDED"]) as cursor:
+    for row in cursor:
+        if row[0] is None or str(row[0]).strip() == " ":
+            row[0] = row[1]
+            cursor.updateRow(row)
+
+# Project to NAD 1983 UTM Zone 13 and save to on-disk STAGED geodatabase
 desc = arcpy.Describe(tmp_copy)
 spatialRef = desc.spatialReference
+
+# Define the target UTM 13N Spatial Reference Object using its EPSG code (26913)
+coordSystemNAD = arcpy.SpatialReference(26913)
+
 if spatialRef.Name == "NAD 1983":
-    print("Spatial reference is already NAD 1983 — skipping reprojection.")
-    arcpy.CopyFeatures_management(tmp_copy, final_fc)
+    print("Spatial reference is already NAD 1983 — copying directly to final staged feature class.")
+    arcpy.management.CopyFeatures(tmp_copy, final_fc)
 else:
-    print("Reprojecting to NAD83 UTM Zone 13N...")
-    coordSystemNAD = (
-        "PROJCS['NAD_1983_UTM_Zone_13N',"
-        "GEOGCS['GCS_North_American_1983',"
-        "DATUM['D_North_American_1983',"
-        "SPHEROID['GRS_1980',6378137.0,298.257222101]],"
-        "PRIMEM['Greenwich',0.0],"
-        "UNIT['Degree',0.0174532925199433]],"
-        "PROJECTION['Transverse_Mercator'],"
-        "PARAMETER['false_easting',500000.0],"
-        "PARAMETER['false_northing',0.0],"
-        "PARAMETER['central_meridian',-111.0],"
-        "PARAMETER['scale_factor',0.9996],"
-        "PARAMETER['latitude_of_origin',0.0],"
-        "UNIT['Meter',1.0]]"
-    )
-    arcpy.Project_management(tmp_copy, final_fc, coordSystemNAD)
+    print("Reprojecting to NAD83 UTM Zone 13N via Environment Settings...")
+    # Set the environment projection to UTM Zone 13N
+    with arcpy.EnvManager(outputCoordinateSystem=coordSystemNAD):
+        # CopyFeatures will automatically project the data on-the-fly!
+        arcpy.management.CopyFeatures(tmp_copy, final_fc)
+
+arcpy.management.Delete(tmp_copy)
 
 # Clean up NEPA_DOC_NAME attribute
-print("Rename projects without NEPA_DOC_NAME to 'None'")
+print("Cleaning NEPA_DOC_NAME values...")
+invalid_nepa = {
+    "DEFAULT FOR NOT REQUIRED",
+    "CE without DM",
+    "DECISION NOTICE AND FINDING OF NO SIGNIFICANT IMPACT",
+    "NEPA Pending"
+}
 with arcpy.da.UpdateCursor(final_fc, ["NEPA_DOC_NAME"]) as cursor:
     for row in cursor:
-        if (
-            row[0] in [
-                "DEFAULT FOR NOT REQUIRED",
-                "CE without DM",
-                "DECISION NOTICE AND FINDING OF NO SIGNIFICANT IMPACT",
-                "NEPA Pending",
-                None
-            ]
-        ):
+        val = row[0]
+        if val is None or str(val).strip() == "" or val in invalid_nepa:
             row[0] = None
-
         else:
-            if str(row[0]).startswith("(PALS)"):
-                row[0] = str(row[0]).replace("(PALS)", "").strip()
-
+            if str(val).startswith("(PALS)"):
+                row[0] = str(val).replace("(PALS)", "").strip()
         cursor.updateRow(row)
 
 # Cleanup
-print("Delete unnecessary fields")
-db_fields = {"OBJECTID", "Shape", "Shape_Length", "Shape_Area"}
-for fld in arcpy.ListFields(final_fc):
-    if fld.name not in set(keep_fields) and fld.name not in db_fields:
-        try:
-            arcpy.DeleteField_management(final_fc, fld.name)
-        except Exception as e:
-            print(f"{fld.name} not deleted.")
-            
-print("\n=== Cleaning up temporary data ===")
-try:
-    if os.path.exists(zip_temp):
-        os.remove(zip_temp)
-    if 'fgdb_name' in locals() and fgdb_name:
-        fgdb_path = os.path.join(scratchFolder, fgdb_name)
-        if arcpy.Exists(fgdb_path):
-            arcpy.Delete_management(fgdb_path)
-    if 'facts_fc' in locals() and arcpy.Exists(facts_fc):
-        arcpy.Delete_management(facts_fc)
-    print("✅ Cleanup complete.")
-except Exception as e:
-    print(f"⚠️ Some interim data was not deleted.\n{e}")
-print("Deleting unnecessary fields")
+print("Removing unneeded attributes...")
+db_fields = {"OBJECTID", "FID", "Shape", "Shape_Length", "Shape_Area", "GLOBALID"}
+fields_to_delete = [
+    fld.name for fld in arcpy.ListFields(final_fc)
+    if fld.name not in keep_fields and fld.name not in db_fields
+]
 
-arcpy.management.Delete(merged_fc)
-arcpy.management.Delete(tmp_copy)
+if fields_to_delete:
+    arcpy.management.DeleteField(final_fc, fields_to_delete)
 
-print("Completed! Run Time: %s\n\n" %(datetime.now() - dt))
+print("Expliding multi-part geometries into distinct single-part records...")
+temp_singlepart = "memory\\exploded_perimeters"
+arcpy.management.MultipartToSinglepart(final_fc, temp_singlepart)
+arcpy.management.RepairGeometry(temp_singlepart, "DELETE_NULL")
+
+arcpy.management.Delete(final_fc)
+arcpy.management.CopyFeatures(temp_singlepart, final_fc)
+
+# Final complete RAM flush
+print("\n=== Cleaning up in-memory workspace ===")
+arcpy.management.Delete("memory")
+print("✅ Complete! Run Time: %s" % (datetime.now() - dt))

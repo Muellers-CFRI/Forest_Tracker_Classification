@@ -1,11 +1,14 @@
 # --- Python ---
 __pycache__/
+.pytest_cache/
 *.py[cod]
 *$py.class
 venv/
 .env
 
 # --- PyCharm ---
+.vscode/
+.idea/
 .idea/
 
 # --- ArcGIS / ESRI ---
@@ -19,8 +22,15 @@ Default.gdb/
 
 # --- Data (DO NOT UPLOAD GDBs) ---
 *.gdb/
+*.gdb.zip
+*.lock
 *.sde/
 data/
+
+# Ignore temporary/scratch data directories
+scratch/
+SCRATCH_DIR/
+TEMP_ZIP.zip
 
 # --- Miscellaneous ---
 archive/
