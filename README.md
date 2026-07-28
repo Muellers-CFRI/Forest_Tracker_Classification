@@ -27,7 +27,9 @@ my_gis_pipeline/
     │   ├── 03_facts_flatten.py
     │   └── 04_facts_finalize.py
     │   └──run_usfs_all.py <-- Master Orchestrator (Runs the entire USFS stack)
-    │
+    ├── blm/
+        ├── 01_blm_classify.py
+        └── 02_blm_finalize.py
     └── utils/
         ├── paths.py        <-- Dynamic workspace, scratch, and database path builder
         └── gis_tools.py    <-- Universal shared ArcPy processing operations
