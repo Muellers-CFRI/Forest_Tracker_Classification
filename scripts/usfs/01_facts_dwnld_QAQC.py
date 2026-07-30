@@ -110,6 +110,7 @@ def clip_to_colorado(facts_fc, unique_name):
 def standardize_fields(facts_fc, url, datetime_str):
     rename_map = {
         "AU_NAME": "TREATMENT_NAME",
+        "SUBUNIT_NAME": "TREATMENT_NAME",
         "ACTIVITY_NAME": "ACTIVITY",
         "FUND_CODES": "FUND_CODE",
         "METHOD_DESC": "METHOD",

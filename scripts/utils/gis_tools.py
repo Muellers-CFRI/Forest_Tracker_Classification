@@ -75,7 +75,9 @@ def classify_from_csv(csv_path, fc, source_fields, field_map, where_clause=None)
                 row[target_start_index:] = new_vals
                 cursor.updateRow(row)
             else:
-                print(f"{cursor_fields[0]} not found in dictionary: {row_key}")
+                has_content = row_key.replace("|", "").strip()
+                if has_content:
+                    print(f"{cursor_fields[0]} not found in dictionary: {row_key}")
 
     print("Update complete!")
 
