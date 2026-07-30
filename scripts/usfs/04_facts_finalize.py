@@ -42,7 +42,9 @@ from config.config import START_YEAR, END_YEAR, TRACKER_FIELDS
 from scripts.utils.date_tools import get_comp_year
 from scripts.utils.gis_tools import (add_fields_from_schema,
                                      delete_unnecessary_fields,
-                                     finalize_tracker_data)
+                                     finalize_tracker_data,
+                                     remove_spatial_slivers,
+                                     remove_duplicate_list)
 
 arcpy.env.overwriteOutput = True
 dt = datetime.now()
@@ -77,6 +79,31 @@ with arcpy.da.UpdateCursor(output_fc, ["SourceOID", "OBJECTID", "DATE_COMPLETED"
 
 finalize_tracker_data(output_fc, agency_key="usfs")
 
+# Project Name field finalize
+with arcpy.da.UpdateCursor(output_fc, ["PRJ_NAME", "NEPA_DOC_NAME", "TREATMENT_NAME"]) as cursor:
+    for row in cursor:
+        raw_nepa = row[1]
+        raw_trt = row[2]
+
+        nepa_list = remove_duplicate_list(raw_nepa)
+        trt_list = remove_duplicate_list(raw_trt)
+
+        trt_string = ", ".join(trt_list) if trt_list else ""
+        nepa_string = f"[NEPA] {', '.join(nepa_list)}" if nepa_list else ""
+
+        if trt_string and nepa_string:
+            final_name = f"{trt_string}, {nepa_string}"
+        elif trt_string:
+            final_name = trt_string
+        elif nepa_string:
+            final_name = nepa_string
+
+        else:
+            final_name = "Unknown"
+
+        row[0] = final_name
+        cursor.updateRow(row)
+
 # Calculate management acres separately
 with arcpy.da.UpdateCursor(output_fc, ["NBR_UNITS_ACCOMPLISHED", "SHAPE@AREA", "ACRES_MGT"]) as cursor:
     for row in cursor:
@@ -89,6 +116,11 @@ with arcpy.da.UpdateCursor(output_fc, ["NBR_UNITS_ACCOMPLISHED", "SHAPE@AREA", "
         else:                            # else (if NBR units greater than managed acres), use GIS acres
             row[2] = gis_acres
         cursor.updateRow(row)
+
+# Attempt to filter out artifact slivers
+print("Filtering out spatial artifact slivers while preserving valid small treatments...")
+removed = remove_spatial_slivers(output_fc, min_acres=0.05)
+print(f"--> Successfully removed {removed} sliver artifacts.")
 
 # Updated Date
 with arcpy.da.UpdateCursor(output_fc, ["UPDATED"]) as cursor:

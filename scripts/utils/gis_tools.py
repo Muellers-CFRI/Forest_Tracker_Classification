@@ -32,22 +32,6 @@ def delete_unnecessary_fields(input_fc, schema_dict):
         arcpy.management.DeleteField(input_fc, to_delete)
 
 
-def remove_duplicate_list(value):
-    """Remove duplicate and 'None' entries from a semicolon-separated strings."""
-    if not value:
-        return None
-
-    vals = [v.strip() for v in str(value).split("; ") if v.strip()]
-    seen = set()
-    deduped = []
-    for v in vals:
-        if v not in seen and v.lower() != "none":
-            seen.add(v)
-            deduped.append(v)
-
-    return ', '.join(deduped) if deduped else None
-
-
 def classify_from_csv(csv_path, fc, source_fields, field_map, where_clause=None):
     """Update fields based on csv"""
     if not os.path.exists(csv_path):
@@ -96,6 +80,67 @@ def classify_from_csv(csv_path, fc, source_fields, field_map, where_clause=None)
     print("Update complete!")
 
 
+def remove_duplicate_list(value):
+    """Remove duplicate and 'None' entries from a semicolon-separated strings."""
+    if not value or str(value).strip().lower() == "none":
+        return None
+
+    vals = [v.strip() for v in str(value).split("; ") if v.strip()]
+    seen = set()
+    deduped = []
+    for v in vals:
+        if v not in seen and v.lower() != "none" and v != "":
+            seen.add(v)
+            deduped.append(v)
+
+    return deduped if deduped else None
+
+
+def remove_spatial_slivers(feature_class, min_acres=0.05):
+    """
+        Evaluates features within a feature class and deletes geometric artifacts
+        (slivers) using a combination of size, shape compactness, and naming indicators.
+
+        Parameters:
+            feature_class (str): Path to the target feature class.
+            min_acres (float): The acreage threshold below which a polygon is scrutinized.
+            area_unit (str): The linear unit of the dataset's projection ("FEET" or "METERS").
+
+        Returns:
+            int: Number of sliver records deleted.
+        """
+    # Conversion factors to acres
+    ABSOLUTE_ACRES_FLOOR = 0.01
+    fields = ["ACRES_GIS", "SHAPE@"]
+    deleted_count = 0
+
+    with arcpy.da.UpdateCursor(feature_class, fields) as cursor:
+        for row in cursor:
+            acres_val = row[0]
+            geom = row[1]
+
+            if acres_val is None or geom is None:
+                cursor.deleteRow()
+                deleted_count += 1
+                continue
+
+            if acres_val <= ABSOLUTE_ACRES_FLOOR:
+                cursor.deleteRow()
+                deleted_count += 1
+                continue
+
+            if acres_val < min_acres:
+                if geom.length > 0:
+                    compactness = geom.area / (geom.length ** 2)
+
+                    if compactness < 0.025:
+                        cursor.deleteRow()
+                        deleted_count += 1
+                        continue
+
+    return deleted_count
+
+
 def finalize_tracker_data(fc, agency_key, mgt_acre_field=None):
     """Standardize finalizer for agency datasets"""
     from config.config import AGENCY_CONSTANTS, AGENCY_FIELD_MAPS, activity_map
@@ -116,7 +161,7 @@ def finalize_tracker_data(fc, agency_key, mgt_acre_field=None):
             for row in cursor:
                 raw_val = str(row[0]) if row[0] is not None else ""
                 cleaned_val = remove_duplicate_list(raw_val)
-                row[1] = cleaned_val
+                row[1] = "; ".join(cleaned_val)
                 cursor.updateRow(row)
 
     print("Calculating GIS Acres...")

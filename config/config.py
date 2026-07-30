@@ -115,7 +115,6 @@ AGENCY_FIELD_MAPS = {
         "PRJ_OBJECT": "TRTMNT_COMMENTS"
     },
     "usfs": {
-        "PRJ_NAME": "TREATMENT_NAME",
         "PRJ_OBJECT": "ACTIVITY",
         "FUND_SOURCE": "funding_update"
     },
