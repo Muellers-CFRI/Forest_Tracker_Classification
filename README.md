@@ -54,14 +54,15 @@ The pipeline executes in four distinct, defensive stages to protect data integri
 3. **03_facts_flatten.py (Spatial Consolidation):** Resolves spatial overlap inflation by executing a specialized `arcpy.management.Dissolve` utilizing an aggressive 100-meter clustering tolerance to compress point drift.
 4. **04_facts_finalize.py (Clean and Finalize):** Reads raw polygon geometry arrays (`SHAPE@AREA`) and clamps the final management acreage (`ACRES_MGT`) to the smaller of either the reported or physical values, wipes away intermediate scaffolding columns, and applies the production `TRACKER_FIELDS` schema.
 
-```
-
 ---
 
+
 ## ⚙️ BLM Keyword Data Pipeline Sequence
-```
+
+
 1. **01_blm_classify.py (Classification):** Ingests raw BLM treatment footprints from the BLM Vegetation Treatment Polygon system and applies an automated text-mining keyword search against names and comments. Segregates unmapped rows into a QA/QC layer for human review.
 2. **02_blm_finalize.py (Clean and Finalize):** Picks up post-reviewed, fully-classified BLM data, maps native field metrics to the master regional tracker schema, and deploys the clean records to the production environment.
+
 ---
 
 ---
