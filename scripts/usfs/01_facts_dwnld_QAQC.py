@@ -108,27 +108,83 @@ def clip_to_colorado(facts_fc, unique_name):
 
 
 def standardize_fields(facts_fc, url, datetime_str):
-    rename_map = {
-        "AU_NAME": "TREATMENT_NAME",
-        "SUBUNIT_NAME": "TREATMENT_NAME",
-        "ACTIVITY_NAME": "ACTIVITY",
-        "FUND_CODES": "FUND_CODE",
-        "METHOD_DESC": "METHOD",
-        "EQUIPMENT_DESC": "EQUIPMENT"
-    }
+    """
+        Standardizes USFS FACTS layers into unified target schemas based on a
+        strict source matrix, using a priority list for the TREATMENT_NAME field.
+        Priority order: 1. NAME, 2. TREATMENT_NAME, 3. AU_NAME, 4. SUBUNIT_NAME
+    """
+    print(f"Standardizing schema for: {facts_fc}")
+    target_fields = ["TREATMENT_NAME", "NEPA_DOC_NAME", "ACTIVITY", "METHOD", "EQUIPMENT", "FUND_CODE"]
 
-    # Rename fields if they exist
-    for old, new in rename_map.items():
-        try:
-            arcpy.management.AlterField(facts_fc, old, new, new)
-            print(f"Renamed {old} -> {new}")
-        except:
-            pass
+    existing_fields = {f.name.lower(): f.name for f in arcpy.ListFields(facts_fc)}
+    for field in target_fields:
+        if field.lower() not in existing_fields:
+            arcpy.management.AddField(facts_fc, field, "TEXT", field_length=255, field_alias=field)
+
+    existing = {f.name.lower(): f.name for f in arcpy.ListFields(facts_fc)}
+
+    # Gather the exact field names available in the current layer's schema
+    name_field = existing.get("name")
+    trt_field = existing.get("treatment_name")
+    au_field = existing.get("au_name")
+    sub_field = existing.get("subunit_name")
+
+    nepa_field = existing.get("nepa_doc_name") or existing.get("nepa_project_name")
+    act_field = existing.get("activity_name") or existing.get("activity")
+    method_field = existing.get("method_desc") or existing.get("method")
+    equip_field = existing.get("equipment_desc") or existing.get("equipment")
+    fund_field = existing.get("fund_codes") or existing.get("fund_code")
+
+    cursor_fields = ["TREATMENT_NAME", "NEPA_DOC_NAME", "ACTIVITY", "METHOD", "EQUIPMENT", "FUND_CODE"]
+    source_fields = [name_field, trt_field, au_field, sub_field, nepa_field, act_field, method_field, equip_field,
+                     fund_field]
+
+    active_fields = list(dict.fromkeys([f for f in (cursor_fields + source_fields) if f is not None]))
+
+    def get_val(row, f_name):
+        if f_name and f_name in active_fields:
+            val = row[active_fields.index(f_name)]
+            if val is not None and str(val).strip().lower() != "none":
+                return str(val).strip()
+        return None
+
+    def set_val(row, f_name, value):
+        row[active_fields.index(f_name)] = value
+
+    with arcpy.da.UpdateCursor(facts_fc, active_fields) as cursor:
+        for row in cursor:
+            final_trt = (
+                get_val(row, name_field) or
+                get_val(row, trt_field) or
+                get_val(row, au_field) or
+                get_val(row, sub_field) or
+                "Unknown"
+            )
+            set_val(row, "TREATMENT_NAME", final_trt)
+
+            set_val(row, "NEPA_DOC_NAME", get_val(row, nepa_field) or "")
+            set_val(row, "ACTIVITY", get_val(row, act_field) or "")
+            set_val(row, "METHOD", get_val(row, method_field) or "")
+            set_val(row, "EQUIPMENT", get_val(row, equip_field) or "")
+            set_val(row, "FUND_CODE", get_val(row, fund_field) or "No Funding Code")
+
+            cursor.updateRow(row)
 
     # Add file/date field
     arcpy.management.AddField(facts_fc, "fileNmDate", "TEXT", field_length=50)
-    val = f"{os.path.basename(url)[:-4]} {datetime_str}"
-    arcpy.management.CalculateField(facts_fc, "fileNmDate", f"'{val}'", "PYTHON3")
+    date_val = f"{os.path.basename(url)[:-4]} {datetime_str}"
+    arcpy.management.CalculateField(facts_fc, "fileNmDate", f"'{date_val}'", "PYTHON3")
+
+    fields_to_drop = [
+        "SUBUNIT_NAME", "AU_NAME", "NAME", "NEPA_PROJECT_NAME",
+        "ACTIVITY_NAME", "METHOD_DESC", "EQUIPMENT_DESC", "FUND_CODES"
+    ]
+    for old_f in fields_to_drop:
+        if old_f.lower() in existing and old_f.upper() not in target_fields:
+            try:
+                arcpy.management.DeleteField(facts_fc, old_f)
+            except:
+                pass
 
 
 # ----- START SCRIPT -----

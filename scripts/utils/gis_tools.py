@@ -2,6 +2,7 @@ import datetime
 import arcpy
 import os
 import pandas as pd
+import re
 
 
 def add_fields_from_schema(fc, schema_dict):
@@ -84,15 +85,36 @@ def classify_from_csv(csv_path, fc, source_fields, field_map, where_clause=None)
 
 def remove_duplicate_list(value):
     """Remove duplicate and 'None' entries from a semicolon-separated strings."""
-    if not value or str(value).strip().lower() == "none":
-        return None
+    if not value or str(value).strip().lower() in ("none", "", "unknown"):
+        return []
 
-    vals = [v.strip() for v in str(value).split("; ") if v.strip()]
-    seen = set()
+    raw_vals = re.split(r'[;,]', str(value))
+    vals = []
+    for v in raw_vals:
+        clean_v = v.strip()
+        clean_v_upper = clean_v.upper()
+
+        if not clean_v or clean_v_upper in ("NONE", "", "UNKNOWN"):
+            continue
+
+        if clean_v and clean_v not in vals:
+            vals.append(clean_v)
+
+    if not vals:
+        return []
+
+    # Fuzzy deduplication
+    vals.sort(key=len, reverse=True)
     deduped = []
     for v in vals:
-        if v not in seen and v.lower() != "none" and v != "":
-            seen.add(v)
+        v_upper = v.upper()
+        is_redundant = False
+        for kept_v in deduped:
+            if v_upper in kept_v.upper():
+                is_redundant = True
+                break
+
+        if not is_redundant:
             deduped.append(v)
 
     return deduped if deduped else None
