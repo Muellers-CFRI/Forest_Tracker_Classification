@@ -30,6 +30,10 @@ forest_tracker_classification/
     ├── blm/
         ├── 01_blm_classify.py
         └── 02_blm_finalize.py
+    ├── doi/
+        ├── 01_ifpers_dwnld_post2024.py
+        ├── 02_ifpers_reclass_post2024.py
+        └── 03_ifpers_finalize_post2024.py
     └── utils/
         ├── paths.py        <-- Dynamic workspace, scratch, and database path builder
         └── gis_tools.py    <-- Universal shared ArcPy processing operations
