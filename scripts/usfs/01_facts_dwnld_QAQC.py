@@ -42,7 +42,9 @@ import urllib.request
 from datetime import datetime
 from zipfile import ZipFile
 from scripts.utils.paths import get_gdb_path, RAW_GDB, SCRATCH_DIR
-from config.config import START_YEAR, END_YEAR, FACTS_URLS, facts_processing_fields
+from scripts.utils.gis_tools import add_fields_from_schema, ensure_nad83_utm13
+from scripts.utils.date_tools import prep_date_fields, filter_by_year
+from config.config import TRACKER_FIELDS,START_YEAR, END_YEAR, FACTS_URLS, facts_processing_fields
 
 arcpy.env.overwriteOutput = True
 dt = datetime.now()
@@ -229,48 +231,27 @@ for mem_fc in merge_list:
     arcpy.management.Delete(mem_fc)
 
 # Preprocess merged perimters
-print("Preprocessing FACTS Perimeter Feature Class")
-print("Subsetting perimeters based on user selected time frame")
+add_fields_from_schema(merged_fc, TRACKER_FIELDS)
 
-dt_start = f"{START_YEAR}-01-01 00:00:00"
-dt_end = f"{END_YEAR}-12-31 23:59:59"
-
-where_clause = (
-    f"(DATE_COMPLETED BETWEEN timestamp '{dt_start}' AND timestamp '{dt_end}') "
-    f"OR "
-    f"(DATE_AWARDED BETWEEN timestamp '{dt_start}' AND timestamp '{dt_end}')"
-)
-
-arcpy.management.MakeFeatureLayer(merged_fc, "date_subset_lyr", where_clause)
-tmp_copy = arcpy.management.CopyFeatures("date_subset_lyr", "memory\\tmp_copy_date")
-arcpy.management.Delete("date_subset_lyr")
-arcpy.management.Delete(merged_fc)
-
-# Update DATE_COMPLETED with DATE_AWARDED if empty
-with arcpy.da.UpdateCursor(tmp_copy, ["DATE_COMPLETED", "DATE_AWARDED"]) as cursor:
+# Carry through OBJECTID to SourceID
+with arcpy.da.UpdateCursor(merged_fc, ["OBJECTID", "SourceOID"]) as cursor:
     for row in cursor:
-        if row[0] is None or str(row[0]).strip() == " ":
-            row[0] = row[1]
-            cursor.updateRow(row)
+        row[1] = row[0]
 
-# Project to NAD 1983 UTM Zone 13 and save to on-disk STAGED geodatabase
-desc = arcpy.Describe(tmp_copy)
-spatialRef = desc.spatialReference
+# Filter years
+date_fields = ["DATE_COMPLETED", "DATE_AWARDED"]
+temp_date_filtered = "memory\\temp_filtered_facts"
+prep_date_fields(merged_fc, date_fields, min_year=START_YEAR)
+filter_by_year(
+    input_fc=merged_fc,
+    output_fc=temp_date_filtered,
+    year_field="YEAR_COMP",
+    start=START_YEAR,
+    end=END_YEAR)
 
-# Define the target UTM 13N Spatial Reference Object using its EPSG code (26913)
-coordSystemNAD = arcpy.SpatialReference(26913)
-
-if spatialRef.Name == "NAD 1983":
-    print("Spatial reference is already NAD 1983 — copying directly to final staged feature class.")
-    arcpy.management.CopyFeatures(tmp_copy, final_fc)
-else:
-    print("Reprojecting to NAD83 UTM Zone 13N via Environment Settings...")
-    # Set the environment projection to UTM Zone 13N
-    with arcpy.EnvManager(outputCoordinateSystem=coordSystemNAD):
-        # CopyFeatures will automatically project the data on-the-fly!
-        arcpy.management.CopyFeatures(tmp_copy, final_fc)
-
-arcpy.management.Delete(tmp_copy)
+# Project to NAD 1983 UTM Zone 13
+temp_projected = "memory\\temp_projected_facts"
+ensure_nad83_utm13(temp_date_filtered, temp_projected)
 
 # Clean up NEPA_DOC_NAME attribute
 print("Cleaning NEPA_DOC_NAME values...")
@@ -280,7 +261,7 @@ invalid_nepa = {
     "DECISION NOTICE AND FINDING OF NO SIGNIFICANT IMPACT",
     "NEPA Pending"
 }
-with arcpy.da.UpdateCursor(final_fc, ["NEPA_DOC_NAME"]) as cursor:
+with arcpy.da.UpdateCursor(temp_projected, ["NEPA_DOC_NAME"]) as cursor:
     for row in cursor:
         val = row[0]
         if val is None or str(val).strip() == "" or val in invalid_nepa:
@@ -294,19 +275,20 @@ with arcpy.da.UpdateCursor(final_fc, ["NEPA_DOC_NAME"]) as cursor:
 print("Removing unneeded attributes...")
 db_fields = {"OBJECTID", "FID", "Shape", "Shape_Length", "Shape_Area", "GLOBALID"}
 fields_to_delete = [
-    fld.name for fld in arcpy.ListFields(final_fc)
-    if fld.name not in facts_processing_fields and fld.name not in db_fields
+    fld.name for fld in arcpy.ListFields(temp_projected)
+    if fld.name not in facts_processing_fields
+    and fld.name not in db_fields
+    and fld.name not in TRACKER_FIELDS
 ]
 
 if fields_to_delete:
-    arcpy.management.DeleteField(final_fc, fields_to_delete)
+    arcpy.management.DeleteField(temp_projected, fields_to_delete)
 
 print("Expliding multi-part geometries into distinct single-part records...")
 temp_singlepart = "memory\\exploded_perimeters"
-arcpy.management.MultipartToSinglepart(final_fc, temp_singlepart)
+arcpy.management.MultipartToSinglepart(temp_projected, temp_singlepart)
 arcpy.management.RepairGeometry(temp_singlepart, "DELETE_NULL")
 
-arcpy.management.Delete(final_fc)
 arcpy.management.CopyFeatures(temp_singlepart, final_fc)
 
 # Final complete RAM flush

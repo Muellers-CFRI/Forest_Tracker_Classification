@@ -1,8 +1,8 @@
 # Master Schema
 # If the required fields change next year, you only change them HERE.
 
-# DATES
-START_YEAR = 2000
+# DATES INCLUSIVE
+START_YEAR = 2024
 END_YEAR = 2025
 CURRENT_YEAR = 2026
 
@@ -21,6 +21,8 @@ FACTS_URLS = {
     "WBBS": "https://data.fs.usda.gov/geodata/edw/edw_resources/fc/Actv_WBBS_PL.gdb.zip",
 }
 
+IFPERS_URL = "https://ifprs.firenet.gov/arcgis/rest/services/OpenData/IFPRS_Open_Data/FeatureServer/2"
+
 # FIELDS LISTS
 facts_processing_fields = [
     "NEPA_DOC_NAME",
@@ -35,12 +37,34 @@ facts_processing_fields = [
     "fileNmDate",
 ]
 
+ifpers_processing_fields = [
+    "ID",
+    "Name",
+    "Type",
+    "Category",
+    "SubType",
+    "Class",
+    "Agency",
+    "Department",
+    "State",
+    "CalculatedArea",
+    "InitiationDate",
+    "CompletionDate",
+    "Notes",
+    "Status",
+    "FundingSource",
+    "FundingSourceProgram",
+    "FundingAgency"
+]
+
 keyword_classification_fields = {
-    "Original_ID": "LONG",
-    "Class_Combine": "TEXT",
-    "ActClass_1": "TEXT", "Keyword_1": "TEXT",
-    "ActClass_2": "TEXT", "Keyword_2": "TEXT",
-    "ActClass_3": "TEXT", "Keyword_3": "TEXT"
+    "Class_Combine": {"type": "TEXT", "length": 5000},
+    "ActClass_1": {"type": "TEXT", "length": 100},
+    "Keyword_1": {"type": "TEXT", "length": 100},
+    "ActClass_2": {"type": "TEXT", "length": 100},
+    "Keyword_2": {"type": "TEXT", "length": 100},
+    "ActClass_3": {"type": "TEXT", "length": 100},
+    "Keyword_3": {"type": "TEXT", "length": 100}
 }
 
 keyword_activity_fields = {

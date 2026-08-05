@@ -6,11 +6,17 @@ import re
 
 
 def add_fields_from_schema(fc, schema_dict):
-    """Generic worker to add fields to any feature class."""
+    """Generic worker to add fields to any feature class with optional field length support."""
     existing = [f.name.upper() for f in arcpy.ListFields(fc)]
-    for field_name, field_type in schema_dict.items():
+    for field_name, field_def in schema_dict.items():
         if field_name.upper() not in existing:
-            arcpy.management.AddField(fc, field_name, field_type)
+            if isinstance(field_def, dict):
+                f_type = field_def.get("type")
+                f_length = field_def.get("length")
+                arcpy.management.AddField(fc, field_name, f_type, field_length=f_length)
+            else:
+                # Fallback for simple string definitions like "TEXT" or "LONG"
+                arcpy.management.AddField(fc, field_name, field_def)
 
 
 def delete_unnecessary_fields(input_fc, schema_dict):
@@ -31,6 +37,24 @@ def delete_unnecessary_fields(input_fc, schema_dict):
 
     if to_delete:
         arcpy.management.DeleteField(input_fc, to_delete)
+
+
+def ensure_nad83_utm13(input_fc, output_fc, target_wkid=26913):
+    """
+        Ensures input feature class is projected to NAD83 / UTM Zone 13N (WKID 26913).
+        If it's already in 26913, it copies directly. Otherwise, it projects it.
+    """
+    target_sr = arcpy.SpatialReference(target_wkid)
+    input_sr = arcpy.Describe(input_fc)
+
+    if getattr(input_sr, "factoryCode", None) == target_wkid:
+        print("Spatial reference is already NAD 1983 — copying directly to final staged feature class.")
+        arcpy.management.CopyFeatures(input_fc, output_fc)
+    else:
+        print(f"Reprojecting from '{input_sr.name}' to NAD83 UTM Zone 13N via Environment Settings...")
+        with arcpy.EnvManager(outputCoordinateSystem=target_sr):
+            arcpy.management.CopyFeatures(input_fc, output_fc)
+    return output_fc
 
 
 def classify_from_csv(csv_path, fc, source_fields, field_map, where_clause=None):
@@ -185,7 +209,7 @@ def finalize_tracker_data(fc, agency_key, mgt_acre_field=None):
             for row in cursor:
                 raw_val = str(row[0]) if row[0] is not None else ""
                 cleaned_val = remove_duplicate_list(raw_val)
-                row[1] = "; ".join(cleaned_val)
+                row[1] = "; ".join(cleaned_val)[0:254]
                 cursor.updateRow(row)
 
     print("Calculating GIS Acres...")

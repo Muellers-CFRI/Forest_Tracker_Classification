@@ -61,14 +61,6 @@ arcpy.management.CopyFeatures(input_fc, output_fc)
 
 add_fields_from_schema(output_fc, TRACKER_FIELDS)
 
-print(f"Applying temporal filter from config: {START_YEAR} to {END_YEAR}")
-print("Stamping SourceOID and calculating completion years, and filtering dates...")
-with (arcpy.da.UpdateCursor(output_fc, ["DATE_COMPLETED"]) as cursor):
-    for row in cursor:
-        comp_year = get_comp_year(row[0], min_year=START_YEAR)
-        if comp_year is None or comp_year < START_YEAR or comp_year > END_YEAR:
-            cursor.deleteRow()
-
 print("Stamping permanent SourceOIDs and calculating completion tracker dates...")
 with arcpy.da.UpdateCursor(output_fc, ["SourceOID", "OBJECTID", "DATE_COMPLETED", "YEAR_COMP", "DATE_COMP"]) as cursor:
     for row in cursor:
