@@ -1,9 +1,9 @@
 import os
 import arcpy
 from datetime import datetime
-from scripts.utils.paths import get_gdb_path
+from utils.paths import get_gdb_path
 from config.config import TRACKER_FIELDS
-from scripts.utils.gis_tools import (finalize_tracker_data, delete_unnecessary_fields)
+from utils.gis_tools import (finalize_tracker_data, delete_unnecessary_fields)
 
 arcpy.env.overwriteOutput = True
 dt = datetime.now()

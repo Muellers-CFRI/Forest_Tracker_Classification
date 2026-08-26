@@ -33,7 +33,7 @@ import os
 import arcpy
 import pandas as pd
 from datetime import datetime
-from scripts.utils.paths import get_gdb_path, SCRATCH_GDB
+from utils.paths import get_gdb_path, SCRATCH_GDB
 
 arcpy.env.overwriteOutput = True
 dt = datetime.now()

@@ -1,17 +1,18 @@
-# --- Python ---
+# ==============================================================================
+# --- CORE PYTHON & IDEs ---
+# ==============================================================================
 __pycache__/
 .pytest_cache/
 *.py[cod]
 *$py.class
 venv/
 .env
-
-# --- PyCharm ---
 .vscode/
 .idea/
-.idea/
 
-# --- ArcGIS / ESRI ---
+# ==============================================================================
+# --- ARCGIS / ESRI SCRATCH KILLERS ---
+# ==============================================================================
 *.lock
 *.log
 gpmetadata/
@@ -20,19 +21,29 @@ gpmetadata/
 scratch.gdb/
 Default.gdb/
 
-# --- Data (DO NOT UPLOAD GDBs) ---
-*.gdb/
-*.gdb.zip
-*.lock
-*.sde/
-data/
+# ==============================================================================
+# --- PIPELINE ISOLATION (THE NEW LAYOUT) ---
+# ==============================================================================
+# 1. Ignore your active Map Workspaces
+1_gis_and_maps/
 
-# Ignore temporary/scratch data directories
-scratch/
-SCRATCH_DIR/
-TEMP_ZIP.zip
+# 2. Block the entire Data Vault (keeps massive rasters/GDBs off GitHub)
+2_data/
 
-# --- Miscellaneous ---
-archive/
+# 4 & 5. Block documentation, ad-hoc requests, and historical archives
+4_documentation/
+5_workspace_and_ops/
+
+# ==============================================================================
+# --- THE 3_CODE ENVIRONMENT REPO GUARD ---
+# ==============================================================================
+# Protect GitHub from legacy files or temporary scratch spaces hidden inside code
+3_code/scratch/
+3_code/sandbox
+3_code/TEMP_ZIP.zip
+
+# ==============================================================================
+# --- MISCELLANEOUS OOPSIES ---
+# ==============================================================================
 .DS_Store
 Thumbs.db

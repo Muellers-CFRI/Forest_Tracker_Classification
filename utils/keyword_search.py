@@ -4,7 +4,7 @@ import re
 import csv
 
 from config.config import keyword_classification_fields, keyword_activity_fields
-from scripts.utils.gis_tools import add_fields_from_schema
+from utils.gis_tools import add_fields_from_schema
 
 
 def clean_text(s: str) -> str:

@@ -37,8 +37,8 @@ import os
 import arcpy
 import pandas as pd
 from datetime import datetime
-from scripts.utils.gis_tools import classify_from_csv
-from scripts.utils.paths import (get_gdb_path, SCRATCH_DIR,
+from utils.gis_tools import classify_from_csv
+from utils.paths import (get_gdb_path, SCRATCH_DIR,
                                  FS_ACTIVITY_CSV,
                                  FS_METHOD_CSV,
                                  FS_EQUIP_CSV,

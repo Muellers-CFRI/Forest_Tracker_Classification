@@ -37,10 +37,10 @@ Outputs:
 import arcpy
 import os
 from datetime import datetime
-from scripts.utils.paths import get_gdb_path
+from utils.paths import get_gdb_path
 from config.config import START_YEAR, END_YEAR, TRACKER_FIELDS
-from scripts.utils.date_tools import get_comp_year
-from scripts.utils.gis_tools import (add_fields_from_schema,
+from utils.date_tools import get_comp_year
+from utils.gis_tools import (add_fields_from_schema,
                                      delete_unnecessary_fields,
                                      finalize_tracker_data,
                                      remove_spatial_slivers,

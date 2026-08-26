@@ -41,10 +41,10 @@ import arcpy
 import urllib.request
 from datetime import datetime
 from zipfile import ZipFile
-from scripts.utils.paths import get_gdb_path, RAW_GDB, SCRATCH_DIR
-from scripts.utils.gis_tools import add_fields_from_schema, ensure_nad83_utm13
-from scripts.utils.date_tools import prep_date_fields, filter_by_year
-from config.config import TRACKER_FIELDS,START_YEAR, END_YEAR, FACTS_URLS, facts_processing_fields
+from utils.paths import get_gdb_path, RAW_GDB, SCRATCH_DIR
+from utils.gis_tools import add_fields_from_schema, ensure_nad83_utm13
+from utils.date_tools import prep_date_fields, filter_by_year
+from config.config import TRACKER_FIELDS, START_YEAR, END_YEAR, FACTS_URLS, facts_processing_fields
 
 arcpy.env.overwriteOutput = True
 dt = datetime.now()

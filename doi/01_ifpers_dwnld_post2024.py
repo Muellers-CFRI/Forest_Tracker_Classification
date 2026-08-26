@@ -3,9 +3,10 @@ import os
 import arcpy
 from datetime import datetime
 from arcgis.features import FeatureLayer
-from scripts.utils.paths import get_gdb_path, RAW_GDB
-from scripts.utils.gis_tools import add_fields_from_schema, ensure_nad83_utm13
-from scripts.utils.date_tools import prep_date_fields, filter_by_year
+
+from utils.paths import get_gdb_path, RAW_GDB
+from utils.gis_tools import add_fields_from_schema, ensure_nad83_utm13
+from utils.date_tools import prep_date_fields, filter_by_year
 from config.config import (IFPERS_URL, ifpers_processing_fields,
                            TRACKER_FIELDS, START_YEAR, END_YEAR)
 

@@ -1,9 +1,9 @@
 import os
 import arcpy
 from datetime import datetime
-from scripts.utils.paths import get_gdb_path, IFPERS_TYPE_CSV, KEYWORD_CSV
-from scripts.utils.gis_tools import classify_from_csv
-from scripts.utils.keyword_search import classify_treatments, finalize_and_split
+from utils.paths import get_gdb_path, IFPERS_TYPE_CSV, KEYWORD_CSV
+from utils.gis_tools import classify_from_csv
+from utils.keyword_search import classify_treatments, finalize_and_split
 
 arcpy.env.overwriteOutput = True
 dt = datetime.now()
